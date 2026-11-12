@@ -57,6 +57,9 @@
   @media (max-width:760px) {
     #panel { position:absolute; inset:auto 0 0 0; width:auto; height:62%; border-left:0; border-top:1px solid var(--line); border-radius:16px 16px 0 0; z-index:5; }
     #spin { font-size:18px; padding:14px 34px; }
+    #panel.kb { border-radius:0; }
+    #panel.kb .check, #panel.kb #add { display:none; }
+    input[type=text], input[type=number], select { font-size:16px; }   /* мельче 16px — iPhone сам увеличивает страницу при наборе */
   }
 </style>
 </head>
@@ -564,17 +567,26 @@ addEventListener('keydown', e => { if (e.code === 'Space' && !/INPUT|BUTTON/.tes
 /* ---------- панель ---------- */
 const listEl = $('list'), countEl = $('count'), panel = $('panel');
 function refresh() {
+  // Строки обновляются на месте, а поле, в котором сейчас печатают, не трогаем — иначе курсор прыгает и текст сбивается.
   const list = items();
-  listEl.textContent = '';
+  while (listEl.children.length > list.length) listEl.lastChild.remove();
   list.forEach((it, i) => {
-    const row = document.createElement('div'); row.className = 'row';
-    const col = Object.assign(document.createElement('input'), { type:'color', value:it.color, title:'Цвет' });
-    col.oninput = () => { it.color = col.value; drawWheel(); save(); pushItems(); };
-    const txt = Object.assign(document.createElement('input'), { type:'text', value:it.text, maxLength:40, placeholder:`Позиция ${i+1}` });
-    txt.oninput = () => { it.text = txt.value; drawWheel(); save(); pushItems(); };
-    const del = Object.assign(document.createElement('button'), { className:'sm', type:'button', textContent:'✕', title:'Удалить', disabled:list.length <= MIN });
-    del.onclick = () => { list.splice(i, 1); refresh(); pushItems(); };
-    row.append(col, txt, del); listEl.append(row);
+    let row = listEl.children[i];
+    if (!row) {
+      row = document.createElement('div'); row.className = 'row';
+      const col = Object.assign(document.createElement('input'), { type:'color', title:'Цвет' });
+      col.oninput = () => { items()[i].color = col.value; drawWheel(); save(); pushItems(); };
+      const txt = Object.assign(document.createElement('input'), { type:'text', maxLength:40, placeholder:`Позиция ${i+1}`, dir:'ltr', autocomplete:'off', enterKeyHint:'done' });
+      txt.oninput = () => { items()[i].text = txt.value; drawWheel(); save(); pushItems(); };
+      txt.onkeydown = e => { if (e.key === 'Enter') txt.blur(); };
+      const del = Object.assign(document.createElement('button'), { className:'sm', type:'button', textContent:'✕', title:'Удалить' });
+      del.onclick = () => { items().splice(i, 1); refresh(); pushItems(); };
+      row.append(col, txt, del); listEl.append(row);
+    }
+    const [col, txt, del] = row.children;
+    if (col.value !== it.color) col.value = it.color;
+    if (txt !== document.activeElement && txt.value !== it.text) txt.value = it.text;
+    del.disabled = list.length <= MIN;
   });
   countEl.value = list.length; $('remove').checked = state.remove;
   $('minus').disabled = list.length <= MIN; $('plus').disabled = $('add').disabled = list.length >= MAX;
@@ -585,6 +597,21 @@ function setCount(n) {
   while (list.length < n) list.push({ text:`Позиция ${list.length + 1}`, color:PALETTE[list.length % PALETTE.length] });
   list.length = n; refresh(); pushItems();
 }
+/* Телефон: экранная клавиатура не должна закрывать поля — панель занимает видимую часть экрана над клавиатурой. */
+const vv = window.visualViewport;
+function fitKeyboard() {
+  const a = document.activeElement, typing = a && panel.contains(a) && /^(text|number)$/.test(a.type || '');
+  const kb = vv ? Math.max(0, innerHeight - vv.height - vv.offsetTop) : 0;
+  const on = typing && matchMedia('(max-width:760px)').matches && (kb > 80 || innerHeight < 520);
+  panel.classList.toggle('kb', !!on);
+  panel.style.bottom = on && kb > 80 ? kb + 'px' : '';
+  panel.style.height = on ? Math.round(vv ? vv.height : innerHeight) + 'px' : '';
+  if (on) a.scrollIntoView({ block:'nearest' });
+}
+if (vv) { vv.addEventListener('resize', fitKeyboard); vv.addEventListener('scroll', fitKeyboard); }
+addEventListener('resize', fitKeyboard);
+panel.addEventListener('focusin', () => { fitKeyboard(); setTimeout(fitKeyboard, 350); });
+panel.addEventListener('focusout', () => setTimeout(fitKeyboard, 50));
 $('minus').onclick = () => setCount(items().length - 1);
 $('plus').onclick = () => setCount(items().length + 1);
 countEl.onchange = () => setCount(+countEl.value);
