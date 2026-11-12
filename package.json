@@ -1,0 +1,9 @@
+{
+  "name": "fortune-wheel-cats",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Колесо фортуны с танцующими котами — мини-приложение для Telegram",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
+}
