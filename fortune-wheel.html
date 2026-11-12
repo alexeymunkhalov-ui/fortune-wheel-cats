@@ -124,7 +124,7 @@ const items = () => state.items;
 /* ---------- я и мой кот ---------- */
 const tg = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData ? Telegram.WebApp : null;
 /* Ссылка на мини-приложение из @BotFather, например 'https://t.me/my_wheel_bot/wheel'. Нужна кнопке «Позвать» внутри Telegram. */
-const TG_APP_LINK = '';
+const TG_APP_LINK = 'https://t.me/koleso_kotov_bot';
 if (tg) { try { tg.ready(); tg.expand(); tg.setHeaderColor('#120a24'); tg.setBackgroundColor('#120a24'); tg.disableVerticalSwipes(); } catch (e) {} }
 const rnd = a => a[Math.floor(Math.random() * a.length)];
 const randomCat = () => ({ fur: rnd(['#f2a03d','#6b6b7b','#ffffff','#8b5a2b','#2b2b33','#d9c7a3','#9aa7c7','#e8762c']), belly: rnd(['#fff1d6','#ffffff','#e8e8f0','#ffd9e6']),
@@ -524,7 +524,7 @@ $('invite').onclick = () => {
   const btn = $('invite'), flashBtn = t => { btn.textContent = t; setTimeout(() => btn.textContent = '🔗 Позвать', 1800); };
   const room = /^[\w-]{1,64}$/.test(roomId) ? roomId : 'main';
   if (tg && TG_APP_LINK) {
-    const link = TG_APP_LINK + (room === 'main' ? '' : '?startapp=' + room);
+    const link = TG_APP_LINK + '?startapp' + (room === 'main' ? '' : '=' + room);
     return tg.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Крутим колесо фортуны — заходи котом!'));
   }
   const link = location.origin + location.pathname + (room === 'main' ? '' : '?room=' + room);
