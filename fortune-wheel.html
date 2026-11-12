@@ -67,7 +67,26 @@
   #add { padding:10px; border-radius:10px; border:1px dashed var(--line); background:none; color:var(--text); cursor:pointer; font:inherit; }
   #add:hover:not(:disabled) { border-color:var(--accent); }
   .check { display:flex; gap:8px; align-items:center; color:var(--muted); cursor:pointer; }
+  textarea { background:#120a24; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 10px; font:inherit; resize:vertical; min-height:90px; }
+  #karTab { padding:0 16px 16px; display:flex; flex-direction:column; gap:10px; overflow-y:auto; flex:1; min-height:0; }
+  #karTab small { color:var(--muted); }
+  .ksong { display:flex; flex-direction:column; gap:6px; padding:10px; border:1px solid var(--line); border-radius:10px; flex:none; }
+  .ksong .row input { flex:1; }
+  .dash { padding:10px; border-radius:10px; border:1px dashed var(--line); background:none; color:var(--text); cursor:pointer; font:inherit; flex:none; }
+  #sing { display:block; margin:10px auto 0; padding:10px 22px; border:0; border-radius:999px; background:var(--accent); color:#fff; font:inherit; font-weight:800; font-size:18px; cursor:pointer; }
+  #again { position:absolute; top:106px; left:14px; max-width:60%; padding:9px 14px; border-radius:10px; border:1px solid var(--accent2); background:rgba(28,18,54,.85); color:var(--text); cursor:pointer; font:inherit; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #kar { position:absolute; top:56px; bottom:calc(140px + env(safe-area-inset-bottom, 0px)); left:50%; transform:translateX(-50%); width:min(720px, calc(100% - 20px)); z-index:4; display:flex; flex-direction:column;
+    background:rgba(18,10,36,.94); border:2px solid var(--accent2); border-radius:18px; overflow:hidden; box-shadow:0 0 40px rgba(255,214,10,.3); }
+  #kar header, #kar footer { display:flex; align-items:center; gap:8px; padding:8px 12px; flex:none; }
+  #kar header b { flex:1; font-size:18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #kar footer span { min-width:64px; text-align:center; color:var(--muted); font-size:13px; }
+  #kar footer a { margin-left:auto; color:var(--accent2); cursor:pointer; font-size:13px; }
+  #karVideo { flex:none; background:#000; }
+  #karVideo iframe { display:block; width:100%; height:min(34vh, 300px); border:0; }
+  #karVideo.solo { flex:1; } #karVideo.solo iframe { height:100%; }
+  #karText { flex:1; min-height:0; overflow-y:auto; white-space:pre-wrap; text-align:center; font-size:26px; font-weight:800; line-height:1.5; padding:28px 16px 60%; overflow-wrap:anywhere; }
   @media (max-width:760px) {
+    #karText { font-size:21px; }
     #panel { position:absolute; inset:auto 0 0 0; width:auto; height:62%; border-left:0; border-top:1px solid var(--line); border-radius:16px 16px 0 0; z-index:5; }
     #spin { font-size:18px; padding:14px 30px; }
     #banner { font-size:48px; }
@@ -81,7 +100,18 @@
 <div id="app">
   <div id="stage">
     <canvas id="scene"></canvas>
-    <div id="result" hidden title="Нажмите, чтобы закрыть"><small>Выпало</small><b></b></div>
+    <div id="result" hidden title="Нажмите, чтобы закрыть"><small>Выпало</small><b></b><button id="sing" type="button" hidden>🎤 Петь</button></div>
+    <button id="again" type="button" hidden></button>
+    <div id="kar" hidden>
+      <header><b id="karTitle"></b><button class="sm" id="karClose" type="button" aria-label="Закрыть" title="Закрыть">✕</button></header>
+      <div id="karVideo"></div>
+      <div id="karText"></div>
+      <footer id="karCtl">
+        <button class="sm" id="karPlay" type="button" title="Пауза / продолжить прокрутку">⏸</button>
+        <button class="sm" id="karSlow" type="button" title="Медленнее">−</button><span id="karSpeed"></span><button class="sm" id="karFast" type="button" title="Быстрее">+</button>
+        <a id="karYt" hidden>Открыть в YouTube</a>
+      </footer>
+    </div>
     <div id="who" title="Сколько зрителей в комнате">🐱 1</div>
     <button id="invite" type="button">🔗 Позвать</button>
     <button id="toggle">⚙ Настроить</button>
@@ -103,7 +133,7 @@
   </div>
   <aside id="panel">
     <header>
-      <div class="tabs"><button id="tabWheel" class="on" type="button">Колесо</button><button id="tabCat" type="button">Мой кот</button></div>
+      <div class="tabs"><button id="tabWheel" class="on" type="button">Колесо</button><button id="tabCat" type="button">Мой кот</button><button id="tabKar" type="button" hidden>Караоке</button></div>
       <button class="sm" id="close" type="button" aria-label="Закрыть" title="Закрыть">✕</button>
     </header>
     <div id="catTab" hidden>
@@ -116,6 +146,12 @@
       <div class="row"><label for="cSize">Размер</label><input id="cSize" type="range" min="0.5" max="1.5" step="0.05"></div>
       <label class="check"><input type="checkbox" id="cGlasses"> Тёмные очки</label>
       <button id="cRandom" type="button" style="padding:10px;border-radius:10px;border:1px dashed var(--line);background:none;color:var(--text);cursor:pointer;font:inherit">🎲 Случайный кот</button>
+    </div>
+    <div id="karTab" hidden>
+      <small>Для каждой песни можно указать ролик с YouTube и вставить слова. Всё сохраняется на этом устройстве и раздаётся зрителям, пока вы в комнате.</small>
+      <div id="karList" style="display:flex;flex-direction:column;gap:10px"></div>
+      <button class="dash" id="karAdd" type="button">+ Добавить песню</button>
+      <button class="dash" id="karReset" type="button">↺ Вернуть все песни на колесо</button>
     </div>
     <fieldset id="fs">
       <div class="row">
@@ -149,13 +185,19 @@ try {
   const s = JSON.parse(localStorage.getItem('fortune-wheel-v1'));
   if (s && Array.isArray(s.items) && s.items.length >= MIN) state = Object.assign(state, s);
 } catch (e) {}
-const save = () => { try { localStorage.setItem('fortune-wheel-v1', JSON.stringify(state)); } catch (e) {} };
+const save = () => { if (karMode) return; try { localStorage.setItem('fortune-wheel-v1', JSON.stringify(state)); } catch (e) {} };
 const items = () => state.items;
 
 /* ---------- я и мой кот ---------- */
 const tg = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData ? Telegram.WebApp : null;
 /* Ссылка на мини-приложение из @BotFather, например 'https://t.me/my_wheel_bot/wheel'. Нужна кнопке «Позвать» внутри Telegram. */
 const TG_APP_LINK = 'https://t.me/koleso_kotov_bot';
+/* Скрытый режим «караоке»: ссылка ?startapp=karaoke… (в браузере ?room=karaoke…). Ведущему — та же ссылка с _edit на конце (или &edit=1). */
+const linkRoom = new URLSearchParams(location.search).get('room') || (tg && tg.initDataUnsafe.start_param) || '';
+const karMode = /^karaoke/.test(linkRoom), karEdit = karMode && (/_edit$/.test(linkRoom) || new URLSearchParams(location.search).has('edit'));
+const KAR_DEFAULT = ['Милый ублюдок', 'Я тебя могну', 'Да, я твоя шалава', 'Не бойся ночи, ведь я рядом', 'Ворона', 'Династия', 'Банька-парилка', 'Егор Крид в гей-клубе'];
+const karItems = songs => songs.map((x, i) => ({ text:x.title, color:PALETTE[i % PALETTE.length] }));
+if (karMode) state = Object.assign({}, state, { items: karItems(KAR_DEFAULT.map(title => ({ title }))), remove:true });
 if (tg) { try { tg.ready(); tg.expand(); tg.setHeaderColor('#120a24'); tg.setBackgroundColor('#120a24'); tg.disableVerticalSwipes(); } catch (e) {} }
 const rnd = a => a[Math.floor(Math.random() * a.length)];
 const randomCat = () => ({ fur: rnd(['#f2a03d','#6b6b7b','#ffffff','#8b5a2b','#2b2b33','#d9c7a3','#9aa7c7','#e8762c']), belly: rnd(['#fff1d6','#ffffff','#e8e8f0','#ffd9e6']),
@@ -541,7 +583,7 @@ const resultEl = $('result'), spinBtn = $('spin'), fs = $('fs'), raceBtn = $('ra
 let game = null;   // идущая мини-игра: { kind:'race'|'bottle', data, t0, ... }
 function setBusy() { spinBtn.disabled = raceBtn.disabled = bottleBtn.disabled = !!(spin || game); fs.disabled = !!spin; }
 function showResult(label, text, color) {
-  resultEl.querySelector('small').textContent = label; resultEl.querySelector('b').textContent = text;
+  $('sing').hidden = true; resultEl.querySelector('small').textContent = label; resultEl.querySelector('b').textContent = text;
   resultEl.style.borderColor = color; resultEl.hidden = false;
   resultEl.style.animation = 'none'; void resultEl.offsetWidth; resultEl.style.animation = '';
 }
@@ -568,8 +610,7 @@ function beginSpin(from, to, dur, elapsed) {
 /* ---------- сеть: комната, зрители, общее колесо ---------- */
 /* Комната: из ссылки-приглашения, иначе на каждый запуск своя новая — общих комнат «по умолчанию» нет. */
 const newRoom = () => 'r' + Math.random().toString(36).slice(2, 10);
-const linkRoom = new URLSearchParams(location.search).get('room') || (tg && tg.initDataUnsafe.start_param) || '';
-let roomId = /^[\w-]{1,64}$/.test(linkRoom) ? linkRoom : newRoom();
+let roomId = /^[\w-]{1,64}$/.test(linkRoom) ? linkRoom.replace(/_edit$/, '') : newRoom();
 if (!tg && !linkRoom && /^https?:$/.test(location.protocol)) try { history.replaceState(null, '', location.pathname + '?room=' + roomId); } catch (e) {}
 const api = p => `${p}?room=${encodeURIComponent(roomId)}&id=${me.id}`;
 const catOf = () => { const c = Object.assign({}, me); delete c.id; return c; };
@@ -587,13 +628,15 @@ function connect() {
     const m = JSON.parse(e.data);
     if (m.type === 'init') {
       online = true;
-      if (m.fresh) post('items', { items: state.items, remove: state.remove });   // новая комната — отдаём ей своё колесо
+      if (m.kar) { if (karEdit && karLocal) post('kar', { songs: karSongs }); else { karSongs = m.kar; renderKar(); } }   // ведущий — источник песен
+      if (m.fresh && !karMode) post('items', { items: state.items, remove: state.remove });   // новая комната — отдаём ей своё колесо
       else { state.items = m.items; state.remove = m.remove; refresh(); }
       setPlayers(m.players); post('cat', { cat: catOf() });
       if (m.spin) beginSpin(m.spin.from, m.spin.to, m.spin.dur, m.spin.elapsed); else if (!spin) disc.rotation.z = m.rot;
       hypeOf.clear(); for (const id in m.hype || {}) hypeOf.set(id, m.hype[id]);
       if (m.game) beginGame(m.game.kind, m.game.data, m.game.elapsed); else if (game) endGame();
     } else if (m.type === 'players') setPlayers(m.players);
+    else if (m.type === 'kar') { if (m.by !== me.id) { karSongs = m.songs; renderKar(); } }
     else if (m.type === 'react') playReact(m.id, m.kind);
     else if (m.type === 'hype') { if (m.id !== me.id) hypeOf.set(m.id, m.v); }
     else if (m.type === 'game') beginGame(m.kind, m.data, 0);
@@ -607,7 +650,7 @@ $('invite').onclick = () => {
   if (tg && TG_APP_LINK) {
     // Пока в комнате никого, кроме меня, каждое приглашение ведёт в новую комнату с моим текущим колесом:
     // разные чаты не смешиваются и никто не видит остатки прошлой игры. Если гости уже есть — зовём к ним.
-    if (online && !players.some(p => p.id !== me.id)) { roomId = newRoom(); connect(); }
+    if (!karMode && online && !players.some(p => p.id !== me.id)) { roomId = newRoom(); connect(); }
     const link = TG_APP_LINK + '?startapp=' + roomId;
     return tg.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Крутим колесо фортуны — заходи котом!'));
   }
@@ -625,6 +668,7 @@ function finishSpin() {
   const idx = indexAtPointer(), it = items()[idx];
   spin = null; setBusy();
   showResult('Выпало', it.text.trim() || '—', it.color);
+  if (karMode) offerSong(it.text);
   if (state.remove && !online) pendingRemove = idx;   // онлайн выпавшую позицию убирает сервер
   if (tg) { try { tg.HapticFeedback.notificationOccurred('success'); } catch (e) {} }
   partyUntil = performance.now() + 3500;
@@ -671,7 +715,7 @@ function setCount(n) {
 /* Телефон: экранная клавиатура не должна закрывать поля — панель занимает видимую часть экрана над клавиатурой. */
 const vv = window.visualViewport;
 function fitKeyboard() {
-  const a = document.activeElement, typing = a && panel.contains(a) && /^(text|number)$/.test(a.type || '');
+  const a = document.activeElement, typing = a && panel.contains(a) && /^(text|number|textarea)$/.test(a.type || '');
   const kb = vv ? Math.max(0, innerHeight - vv.height - vv.offsetTop) : 0;
   const on = typing && matchMedia('(max-width:760px)').matches && (kb > 80 || innerHeight < 520);
   panel.classList.toggle('kb', !!on);
@@ -689,8 +733,9 @@ countEl.onchange = () => setCount(+countEl.value);
 $('add').onclick = () => { setCount(items().length + 1); const inp = listEl.lastChild.querySelector('input[type=text]'); inp.focus(); inp.select(); listEl.scrollTop = listEl.scrollHeight; };
 $('remove').onchange = e => { state.remove = e.target.checked; save(); pushItems(); };
 /* вкладки и «Мой кот» */
-const showTab = cat => { $('fs').hidden = cat; $('catTab').hidden = !cat; $('tabCat').classList.toggle('on', cat); $('tabWheel').classList.toggle('on', !cat); };
-$('tabWheel').onclick = () => showTab(false); $('tabCat').onclick = () => showTab(true);
+const showTab = t => { $('fs').hidden = t !== 'wheel'; $('catTab').hidden = t !== 'cat'; $('karTab').hidden = t !== 'kar';
+  $('tabWheel').classList.toggle('on', t === 'wheel'); $('tabCat').classList.toggle('on', t === 'cat'); $('tabKar').classList.toggle('on', t === 'kar'); };
+$('tabWheel').onclick = () => showTab('wheel'); $('tabCat').onclick = () => showTab('cat'); $('tabKar').onclick = () => showTab('kar');
 $('close').onclick = () => panel.classList.add('closed');
 const catUI = { name:$('cName'), fur:$('cFur'), belly:$('cBelly'), hatStyle:$('cHatStyle'), hat:$('cHat'), size:$('cSize'), glasses:$('cGlasses') };
 const fillCatUI = () => { for (const k in catUI) { if (k === 'glasses') catUI[k].checked = me[k]; else catUI[k].value = me[k]; } };
@@ -888,6 +933,67 @@ function updateGame(now) {
 }
 raceBtn.onclick = () => startGame('race'); bottleBtn.onclick = () => startGame('bottle');
 
+/* ---------- скрытый режим «караоке» ---------- */
+const karEl = $('kar'), karText = $('karText'), karVideo = $('karVideo');
+let karSongs = KAR_DEFAULT.map(title => ({ title, yt:'', text:'' })), karLocal = false, karRun = true, karSpeed = 22, karY = 0, karDelay = 0, karT;
+if (karEdit) try { const v = JSON.parse(localStorage.getItem('fortune-karaoke-v1')); if (Array.isArray(v) && v.length >= MIN) { karSongs = v; karLocal = true; } } catch (e) {}
+const ytId = u => { const m = /(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/.exec(u || ''); return m ? m[1] : ''; };
+/* Песни ведущего хранятся у него на устройстве и раздаются комнате; сервер держит их только в памяти. */
+function pushKar(reset) {
+  karLocal = true; try { localStorage.setItem('fortune-karaoke-v1', JSON.stringify(karSongs)); } catch (e) {}
+  if (!online) { state.items = karItems(karSongs); refresh(); return; }
+  clearTimeout(karT); karT = setTimeout(() => post('kar', { songs: karSongs, reset: !!reset }), reset ? 0 : 600);
+}
+function renderKar() {
+  if (!karEdit) return;
+  const box = $('karList'); if (box.contains(document.activeElement)) return;   // не перерисовываем, пока ведущий печатает
+  box.textContent = '';
+  karSongs.forEach((s, i) => {
+    const d = document.createElement('div'), head = document.createElement('div'); d.className = 'ksong'; head.className = 'row';
+    const title = Object.assign(document.createElement('input'), { type:'text', value:s.title, maxLength:40, placeholder:'Название песни' });
+    const play = Object.assign(document.createElement('button'), { className:'sm', type:'button', textContent:'🎤', title:'Проверить караоке' });
+    const del = Object.assign(document.createElement('button'), { className:'sm', type:'button', textContent:'✕', title:'Удалить песню', disabled:karSongs.length <= MIN });
+    const yt = Object.assign(document.createElement('input'), { type:'text', value:s.yt, maxLength:200, placeholder:'Ссылка на ролик YouTube (необязательно)', inputMode:'url', autocomplete:'off' });
+    const ta = Object.assign(document.createElement('textarea'), { value:s.text, maxLength:8000, rows:4, placeholder:'Слова песни — вставьте сюда (необязательно)' });
+    title.oninput = () => { s.title = title.value; pushKar(); }; yt.oninput = () => { s.yt = yt.value.trim(); pushKar(); }; ta.oninput = () => { s.text = ta.value; pushKar(); };
+    play.onclick = () => { if (innerWidth <= 760) panel.classList.add('closed'); openKaraoke(s.title); }; del.onclick = () => { karSongs.splice(i, 1); renderKar(); pushKar(); };
+    head.append(title, play, del); d.append(head, yt, ta); box.append(d);
+  });
+}
+$('karAdd').onclick = () => { if (karSongs.length >= MAX) return; karSongs.push({ title:`Песня ${karSongs.length + 1}`, yt:'', text:'' }); renderKar(); pushKar(); };
+$('karReset').onclick = () => pushKar(true);
+function offerSong(title) {
+  const again = $('again'); $('sing').hidden = false; $('sing').onclick = e => { e.stopPropagation(); openKaraoke(title); };
+  again.textContent = '🎤 ' + title; again.hidden = false; again.onclick = () => openKaraoke(title);
+}
+function openKaraoke(title) {
+  const s = karSongs.find(x => x.title.trim() === title.trim()) || { title, yt:'', text:'' }, id = ytId(s.yt), text = s.text.trim();
+  $('karTitle').textContent = '🎤 ' + s.title; resultEl.hidden = true;
+  karVideo.textContent = '';
+  if (id) karVideo.append(Object.assign(document.createElement('iframe'), { src:`https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0`, allow:'autoplay; encrypted-media; fullscreen', allowFullscreen:true }));
+  karVideo.hidden = !id; karVideo.classList.toggle('solo', !text);
+  karText.textContent = text || (id ? '' : 'Для этой песни пока нет ни ролика, ни слов.\nПридётся петь по памяти 😼');
+  karText.hidden = !karText.textContent; $('karPlay').hidden = $('karSlow').hidden = $('karFast').hidden = $('karSpeed').hidden = !text;
+  $('karYt').hidden = !id; $('karYt').onclick = () => { const u = 'https://www.youtube.com/watch?v=' + id; if (tg) { try { return tg.openLink(u); } catch (e) {} } window.open(u, '_blank', 'noopener'); };
+  karY = karText.scrollTop = 0; karDelay = 4; karRun = true; $('karPlay').textContent = '⏸'; showSpeed();
+  karEl.hidden = false; setMusic(false);   // фоновая полька на время песни молчит
+}
+function closeKaraoke() { karEl.hidden = true; karVideo.textContent = ''; if (state.music) setMusic(true); }
+const showSpeed = () => { $('karSpeed').textContent = 'скорость ' + Math.round(karSpeed / 2); };
+$('karClose').onclick = closeKaraoke;
+$('karPlay').onclick = () => { karRun = !karRun; karDelay = 0; $('karPlay').textContent = karRun ? '⏸' : '▶'; };
+$('karSlow').onclick = () => { karSpeed = Math.max(4, karSpeed - 4); showSpeed(); }; $('karFast').onclick = () => { karSpeed = Math.min(90, karSpeed + 4); showSpeed(); };
+function updateKaraoke(dt) {
+  if (karEl.hidden || karText.hidden || !karRun) return;
+  if (karDelay > 0) { karDelay -= dt; return; }
+  if (Math.abs(karText.scrollTop - karY) > 3) karY = karText.scrollTop;   // пролистали рукой — продолжаем с этого места
+  karY += karSpeed * dt; karText.scrollTop = karY;
+}
+if (karMode) {
+  for (const el of [$('list'), $('add'), $('count').closest('.row'), $('remove').parentNode]) el.hidden = true;   // колесо здесь задаётся списком песен
+  if (karEdit) { $('tabKar').hidden = false; renderKar(); showTab('kar'); panel.classList.remove('closed'); }
+}
+
 /* ---------- цикл ---------- */
 let prev = performance.now();
 function frame(now) {
@@ -910,12 +1016,12 @@ function frame(now) {
   if (Math.abs((game ? 1 : 0) - camK) > .002) { camK += ((game ? 1 : 0) - camK) * (1 - Math.exp(-4 * dt)); placeCamera(); }
   updateGame(now); updateDance(dt, now);
   danceCats(t, dt, !!spin, now < partyUntil);
-  updateFireworks(dt); updateFx(dt);
+  updateFireworks(dt); updateFx(dt); updateKaraoke(dt);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 refresh(); saveMe(); resize(); connect(); requestAnimationFrame(frame);
-window.__wheel = { startSpin, state, setPlayers, me, startGame, beginGame, playReact, hypeOf, get game() { return game; }, get players() { return players; } };
+window.__wheel = { openKaraoke, startSpin, state, setPlayers, me, startGame, beginGame, playReact, hypeOf, get game() { return game; }, get players() { return players; } };
 })();
 </script>
 </body>

@@ -30,11 +30,17 @@ async function startBot() {
   console.log(r.ok ? `Бот @${botName}: /start подключён` : 'Бот: не удалось подключить /start');
 }
 
+// Скрытый режим «караоке»: комнаты с именем на karaoke… — на колесе песни, у каждой могут быть ролик и слова (их присылает ведущий).
+const KAR_SONGS = ['Милый ублюдок', 'Я тебя могну', 'Да, я твоя шалава', 'Не бойся ночи, ведь я рядом', 'Ворона', 'Династия', 'Банька-парилка', 'Егор Крид в гей-клубе'];
+const karItems = songs => songs.map((x, i) => ({ text: x.title, color: PALETTE[i % PALETTE.length] }));
+const cleanSongs = a => Array.isArray(a) && a.length >= MIN && a.length <= MAX
+  ? a.map(x => ({ title: String((x && x.title) || '').slice(0, 40) || 'Песня', yt: String((x && x.yt) || '').slice(0, 200), text: String((x && x.text) || '').slice(0, 8000) })) : null;
 function getRoom(id) {
   let r = rooms.get(id);
   if (!r) {
     r = { id, fresh: true, remove: false, rot: 0, spin: null, game: null, pending: -1, timer: null, gc: null, players: new Map(),
       items: ['Пицца', 'Суши', 'Бургер', 'Паста', 'Шаурма', 'Рамен', 'Плов', 'Салат'].map((text, i) => ({ text, color: PALETTE[i] })) };
+    if (/^karaoke/.test(id)) { r.kar = KAR_SONGS.map(title => ({ title, yt: '', text: '' })); r.items = karItems(r.kar); r.remove = true; r.fresh = false; }
     rooms.set(id, r);
   }
   return r;
@@ -78,7 +84,12 @@ function act(r, pid, m) {
   if (m.type === 'cat') {
     const cat = cleanCat(m.cat);
     if (JSON.stringify(cat) !== JSON.stringify(p.cat)) { p.cat = cat; sendPlayers(r); }
-  } else if (m.type === 'items' && !r.spin) {
+  } else if (m.type === 'kar' && r.kar && !r.spin) {
+    const songs = cleanSongs(m.songs); if (!songs) return;
+    const same = songs.length === r.kar.length && songs.every((x, i) => x.title === r.kar[i].title);
+    r.kar = songs; broadcast(r, 'kar', { songs, by: pid });
+    if (m.reset || !same) { clearTimeout(r.timer); r.pending = -1; r.items = karItems(songs); sendItems(r, null); }   // список изменился или ведущий вернул все песни
+  } else if (m.type === 'items' && !r.spin && !r.kar) {
     const items = cleanItems(m.items); if (!items) return;
     clearTimeout(r.timer); r.pending = -1;
     r.items = items; r.remove = !!m.remove; sendItems(r, pid);
@@ -119,6 +130,7 @@ http.createServer((req, res) => {
     send(res, 'init', { items: r.items, remove: r.remove, rot: r.rot, fresh: r.fresh, players: playerList(r),
       spin: r.spin && { from: r.spin.from, to: r.spin.to, dur: r.spin.dur, elapsed: Date.now() - r.spin.start },
       game: r.game && { kind: r.game.kind, data: r.game.data, elapsed: Date.now() - r.game.start },
+      kar: r.kar || null,
       hype: Object.fromEntries([...r.players].filter(([, q]) => q.hype).map(([id, q]) => [id, q.hype])) });
     r.fresh = false;
     for (const [id, p] of r.players) if (id !== pid) send(p.res, 'players', { players: playerList(r) });
@@ -133,7 +145,7 @@ http.createServer((req, res) => {
   }
   if (req.method === 'POST' && u.pathname.endsWith('/act') && pid) {
     let body = '';
-    req.on('data', d => { body += d; if (body.length > 20000) req.destroy(); });
+    req.on('data', d => { body += d; if (body.length > 300000) req.destroy(); });
     req.on('end', () => {
       try { const r = rooms.get(rid); if (r) act(r, pid, JSON.parse(body)); } catch (e) {}
       res.writeHead(204); res.end();
