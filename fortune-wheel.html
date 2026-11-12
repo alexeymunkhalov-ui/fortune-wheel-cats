@@ -13,10 +13,23 @@
   #scene { display:block; width:100%; height:100%; }
   #who { white-space:nowrap; }
   #invite { position:absolute; top:60px; left:14px; padding:9px 14px; border-radius:10px; border:1px solid var(--line); background:rgba(28,18,54,.85); color:var(--text); cursor:pointer; font:inherit; }
-  #spin { position:absolute; left:50%; bottom:calc(24px + env(safe-area-inset-bottom, 0px)); transform:translateX(-50%); padding:16px 44px; font-size:22px; font-weight:800; letter-spacing:.06em;
+  #bar { position:absolute; left:0; right:0; bottom:calc(18px + env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; align-items:center; gap:10px; pointer-events:none; }
+  #bar > div { display:flex; align-items:center; gap:10px; pointer-events:auto; }
+  .rbtn { width:44px; height:44px; flex:none; padding:0; border-radius:999px; border:1px solid var(--line); background:rgba(28,18,54,.88); color:var(--text); font-size:22px; line-height:1; cursor:pointer; touch-action:manipulation; transition:transform .08s, background .1s; }
+  .rbtn:active:not(:disabled) { transform:scale(.86); }
+  .gbtn { width:54px; height:54px; font-size:26px; }
+  .gbtn:disabled { opacity:.45; cursor:default; }
+  #dance { position:relative; width:auto; padding:0 12px; display:flex; align-items:center; gap:4px; border-color:var(--accent2); }
+  #dance b { font-size:13px; min-width:28px; text-align:left; color:var(--accent2); }
+  #dance::after { content:''; position:absolute; inset:-3px; border-radius:999px; border:3px solid var(--accent2); transform:scale(calc(1 + var(--b, 0) * .45)); opacity:calc(1 - var(--b, 0)); pointer-events:none; }
+  #dance.hit { background:#23803a; } #dance.miss { background:#8a1c2b; }
+  #banner { position:absolute; left:50%; top:36%; transform:translate(-50%,-50%); font-size:72px; font-weight:900; color:#fff; white-space:nowrap; pointer-events:none;
+    text-shadow:0 4px 0 #2a0a18, 0 0 34px var(--accent); animation:pop2 .28s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop2 { from { transform:translate(-50%,-50%) scale(.4); opacity:0; } }
+  #spin { padding:16px 44px; font-size:22px; font-weight:800; letter-spacing:.06em;
     color:#2a0a18; background:linear-gradient(180deg,#ffe45c,#ffb300); border:0; border-radius:999px; cursor:pointer;
     box-shadow:0 6px 0 #b36b00, 0 12px 30px rgba(255,180,0,.45); transition:transform .08s, box-shadow .08s, opacity .2s; }
-  #spin:active:not(:disabled) { transform:translateX(-50%) translateY(4px); box-shadow:0 2px 0 #b36b00, 0 6px 16px rgba(255,180,0,.4); }
+  #spin:active:not(:disabled) { transform:translateY(4px); box-shadow:0 2px 0 #b36b00, 0 6px 16px rgba(255,180,0,.4); }
   #spin:disabled { opacity:.55; cursor:default; }
   #toggle { position:absolute; top:14px; right:14px; padding:9px 14px; border-radius:10px; border:1px solid var(--line); background:rgba(28,18,54,.85); color:var(--text); cursor:pointer; font:inherit; }
   #result { position:absolute; left:50%; top:18px; transform:translateX(-50%); max-width:min(90%,560px); text-align:center; padding:14px 26px;
@@ -56,7 +69,8 @@
   .check { display:flex; gap:8px; align-items:center; color:var(--muted); cursor:pointer; }
   @media (max-width:760px) {
     #panel { position:absolute; inset:auto 0 0 0; width:auto; height:62%; border-left:0; border-top:1px solid var(--line); border-radius:16px 16px 0 0; z-index:5; }
-    #spin { font-size:18px; padding:14px 34px; }
+    #spin { font-size:18px; padding:14px 30px; }
+    #banner { font-size:48px; }
     #panel.kb { border-radius:0; }
     #panel.kb .check, #panel.kb #add { display:none; }
     input[type=text], input[type=number], select { font-size:16px; }   /* мельче 16px — iPhone сам увеличивает страницу при наборе */
@@ -71,7 +85,21 @@
     <div id="who" title="Сколько зрителей в комнате">🐱 1</div>
     <button id="invite" type="button">🔗 Позвать</button>
     <button id="toggle">⚙ Настроить</button>
-    <button id="spin">КРУТИТЬ!</button>
+    <div id="banner" hidden></div>
+    <div id="bar">
+      <div>
+        <button class="rbtn" type="button" data-r="tomato" title="Кинуть помидор в колесо">🍅</button>
+        <button class="rbtn" type="button" data-r="heart" title="Сердечки">❤️</button>
+        <button class="rbtn" type="button" data-r="jump" title="Прыжок">🦘</button>
+        <button class="rbtn" type="button" data-r="meow" title="Мяу">😺</button>
+        <button class="rbtn" type="button" id="dance" title="Танцевальная битва: жми в ритм музыки — кот танцует активнее и растёт">🕺<b>×0</b></button>
+      </div>
+      <div>
+        <button class="rbtn gbtn" type="button" id="race" title="Кошачьи бега">🏁</button>
+        <button id="spin">КРУТИТЬ!</button>
+        <button class="rbtn gbtn" type="button" id="bottle" title="Бутылочка">🍾</button>
+      </div>
+    </div>
   </div>
   <aside id="panel">
     <header>
@@ -146,14 +174,20 @@ renderer.outputEncoding = THREE.sRGBEncoding;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0b0618);
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+let baseZ = 9, camK = 0, camKind = 'race';   // обычное расстояние камеры; camK 0→1 — отъезд и подъём на время мини-игры
+function placeCamera() {
+  const b = camKind === 'bottle', gz = Math.min(27, Math.max(15, baseZ + 6));   // бутылочку показываем сверху, чтобы ближние коты её не закрывали
+  camera.position.set(0, 3.8 + camK * (b ? 4.7 : 2.2), baseZ + camK * (gz - baseZ));
+  camera.lookAt(0, 3.5 - camK * (b ? 2.3 : 1.5), -4 + camK * (b ? 4 : 3));
+}
 
 function resize() {
   const w = stage.clientWidth, h = stage.clientHeight;
   if (!w || !h) return;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
-  camera.position.set(0, 3.8, Math.min(26, Math.max(7.5, 9 / camera.aspect)));
-  camera.lookAt(0, 3.5, -4);
+  baseZ = Math.min(26, Math.max(7.5, 9 / camera.aspect));
+  placeCamera();
   camera.updateProjectionMatrix();
   syncCats();
 }
@@ -308,7 +342,7 @@ const catById = new Map();
 /* Места считаются под текущий экран: плотные ряды по бокам от колеса, а на узком (мобильном) экране — ещё и на полу перед ним.
    max — наибольший размер кота, который в этом месте не закроет диск. */
 function buildSlots() {
-  const camZ = camera.position.z, k = Math.tan(25 * Math.PI / 180) * camera.aspect, out = [];
+  const camZ = baseZ, k = Math.tan(25 * Math.PI / 180) * camera.aspect, out = [];
   let row = 0;
   for (let z = -6; z <= Math.min(6, camZ - 9.5) + 1e-6; z += .85, row++) {
     const ratio = (camZ - z) / (camZ - WZ), hw = (camZ - z) * k - .45, xin = 2.8 * ratio + .45, off = (row % 2) * .37, depth = .12 * Math.abs(z + 3.5);
@@ -340,38 +374,50 @@ function syncCats() {
       } else { c.position.set(x, 0, z); c.scale.setScalar(.01); }
       scene.add(c); catById.set(p.id, c);
     }
-    Object.assign(c.userData, { tx:x, tz:z, size:p.size, baseY:-Math.sign(x) * .4, move:i });
+    Object.assign(c.userData, { id:p.id, tx:x, tz:z, size:p.size, baseY:-Math.sign(x) * .4, move:i });
   });
   for (const [id, c] of catById) if (!seen.has(id)) { scene.remove(c); catById.delete(id); }
   cats.length = 0; cats.push(...catById.values());
   $('who').textContent = `🐱 ${players.length}` + (online ? '' : ' · офлайн');
 }
 const ease = (o, k, target, f) => { o[k] += (target - o[k]) * f; };
+/* u.g — место и поза кота в мини-игре (бега, бутылочка); u.hype — насколько кот «раскачан» в танцевальной битве. */
 function danceCats(t, dt, spinning, party) {
   const f = 1 - Math.exp(-12 * dt), sp = spinning ? 9 : party ? 8 : 5;
   for (const c of cats) {
-    const u = c.userData, b = t * sp + u.phase, s = Math.sin(b), move = (Math.floor(t / 4) + u.move) % 3;
-    const sc = c.scale.x + (u.size - c.scale.x) * f * .5; c.scale.setScalar(sc);
-    c.position.x += (u.tx - c.position.x) * f * .3; c.position.z += (u.tz - c.position.z) * f * .3;
+    const u = c.userData, g = u.g, run = !!(g && g.run);
+    const h = u.hype = (u.hype || 0) + ((hypeOf.get(u.id) || 0) - (u.hype || 0)) * f * .4, wild = (party || h > .6) && !run;
+    u.ph = (u.ph || 0) + dt * sp * (1 + h * .7) * (run ? 2.4 : 1);
+    const b = u.ph + u.phase, s = Math.sin(b), move = (Math.floor(t / 4) + u.move) % 3;
+    const sc = c.scale.x + (u.size * (1 + h * .6) * (g ? g.s : 1) - c.scale.x) * f * .5; c.scale.setScalar(sc);
+    const tx = g ? g.x : u.tx, tz = g ? g.z : u.tz;
+    if (g && g.direct) c.position.x = tx; else c.position.x += (tx - c.position.x) * f * .3;
+    c.position.z += (tz - c.position.z) * f * .3;
     u.label.scale.set(1.9 / sc, .475 / sc, 1); u.label.position.y = 3.0 + .4 / sc;
-    const jump = Math.abs(s) * (spinning || party ? .45 : .16);
-    u.hips.position.y = jump;
+    if (u.hop > 0) u.hop -= dt;
+    const hop = u.hop > 0 ? Math.sin(Math.PI * (1 - u.hop / .6)) * 1.4 : 0;
+    const jump = Math.abs(s) * (spinning || party ? .45 : .16) * (1 + h * 1.6) * (run ? .6 : 1);
+    u.hips.position.y = jump + hop;
     u.hips.scale.y = 1 + .05 * Math.cos(b * 2);
-    u.shadow.scale.setScalar(1 - jump * .6);
+    u.shadow.scale.setScalar(Math.max(.3, 1 - (jump + hop) * .6));
     ease(u.hips.rotation, 'z', s * .16, f);
     ease(u.head.rotation, 'z', -s * .22, f);
     ease(u.head.rotation, 'x', Math.cos(b * 2) * .1, f);
-    let aL, aR, ry = 0;
-    if (party) { aL = 2.6 + s * .3; aR = 2.6 - s * .3; }
+    let aL, aR, ry = 0, ax = 0, lx = 0;
+    if (run) { aL = aR = .35; ax = s * 1.1; lx = -s * .9; }
+    else if (wild) { aL = 2.6 + s * .3; aR = 2.6 - s * .3; }
     else if (move === 0) { aL = 1.7 + s * .9; aR = 1.7 - s * .9; }
     else if (move === 1) { const k = s > 0; aL = k ? 2.5 : .5; aR = k ? .5 : 2.5; }
-    else { aL = aR = 1.4 + Math.cos(b * 2) * .25; ry = s * .7; }
+    else { aL = aR = 1.4 + Math.cos(b * 2) * .25; ry = s * .7; ax = s * .6; }
     ease(u.arms[0].rotation, 'z', -aL, f); ease(u.arms[1].rotation, 'z', aR, f);
-    ease(u.arms[0].rotation, 'x', move === 2 ? s * .6 : 0, f); ease(u.arms[1].rotation, 'x', move === 2 ? -s * .6 : 0, f);
-    ease(u.legs[0].rotation, 'z', Math.min(0, s) * .5, f); ease(u.legs[1].rotation, 'z', Math.max(0, s) * .5, f);
-    u.spin = party ? u.spin + dt * 7 : u.spin + (Math.round(u.spin / TAU) * TAU - u.spin) * f;
+    ease(u.arms[0].rotation, 'x', ax, f); ease(u.arms[1].rotation, 'x', -ax, f);
+    ease(u.legs[0].rotation, 'z', run ? 0 : Math.min(0, s) * .5, f); ease(u.legs[1].rotation, 'z', run ? 0 : Math.max(0, s) * .5, f);
+    ease(u.legs[0].rotation, 'x', lx, f); ease(u.legs[1].rotation, 'x', -lx, f);
+    u.spin = wild ? u.spin + dt * 7 : u.spin + (Math.round(u.spin / TAU) * TAU - u.spin) * f;
     u.ry = (u.ry || 0) + (ry - (u.ry || 0)) * f;
-    c.rotation.y = u.baseY + u.ry + u.spin;
+    if (u.by === undefined) u.by = u.baseY;
+    u.by += ((g ? g.ry : u.baseY) - u.by) * f * .5;
+    c.rotation.y = u.by + u.ry + u.spin;
     u.tail.forEach((seg, i) => { seg.rotation.z = Math.sin(b + i * .6) * .28; seg.rotation.x = .16; });
   }
 }
@@ -434,7 +480,7 @@ const hz = m => 440 * Math.pow(2, (m - 69) / 12);
 const MEL = [72,76,79,76,72,76,79,84, 77,81,84,81,77,81,84,81, 79,83,86,83,79,77,74,71, 72,0,72,72,84,0,60,0,
              84,79,76,79,84,79,76,72, 81,0,81,77,81,0,84,0, 86,86,83,83,79,79,74,74, 72,76,79,84,96,0,48,0];
 const CH = [[48,60,64,67],[41,60,65,69],[43,59,62,67],[48,60,64,67]];
-let mGain, mStep = 0, mTime = 0, mTimer = null;
+let mGain, mStep = 0, mTime = 0, mTimer = null, beatT = 0, beatP = 60 / 165;   // beatT, beatP — когда звучит сильная доля и её период
 function mNote(f, t, dur, vol, type, slide) {
   const o = actx.createOscillator(), g = actx.createGain();
   o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(f * slide, t + dur);
@@ -445,7 +491,7 @@ function mSchedule() {
   if (mTime < actx.currentTime - .5) mTime = actx.currentTime + .05;
   while (mTime < actx.currentTime + .2) {
     const step = mStep % 64, s = step & 7, ch = CH[(step >> 3) & 3], d = 60 / (spin ? 220 : 165) / 2, m = MEL[step];
-    if (s % 2 === 0) mNote(hz(s % 4 ? ch[0] + 7 : ch[0]), mTime, d * .9, .2, 'triangle');
+    if (s % 2 === 0) { mNote(hz(s % 4 ? ch[0] + 7 : ch[0]), mTime, d * .9, .2, 'triangle'); beatT = mTime; beatP = d * 2; }
     else for (let k = 1; k < 4; k++) mNote(hz(ch[k]), mTime, d * .35, .035, 'square');
     if (m) {
       const boing = (step & 31) === 28 ? 2 : (step & 31) === 30 ? .4 : (s === 7 && Math.random() < .3 ? 1.12 : 0);
@@ -472,18 +518,40 @@ function beep(freq, dur, vol, type='square', when=0) {
 }
 const tick = () => beep(1100, .04, .05);
 const boom = () => beep(70 + Math.random()*40, .35, .12, 'triangle');
+function sweep(f0, f1, dur, vol, type='sine') {
+  const a = audio(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
+  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur);
+}
+function meow() {
+  const a = audio(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), fl = a.createBiquadFilter(), t = a.currentTime;
+  o.type = 'sawtooth'; o.frequency.setValueAtTime(620, t); o.frequency.linearRampToValueAtTime(1020, t + .11); o.frequency.linearRampToValueAtTime(520, t + .42);
+  fl.type = 'bandpass'; fl.frequency.value = 1300; fl.Q.value = 1.5;
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.16, t + .05); g.gain.exponentialRampToValueAtTime(.0001, t + .45);
+  o.connect(fl).connect(g).connect(a.destination); o.start(t); o.stop(t + .47);
+}
 const fanfare = () => [523, 659, 784, 1047].forEach((f, i) => beep(f, .25, .08, 'triangle', i * .12));
 
 /* ---------- вращение ---------- */
 let spin = null, partyUntil = 0, pendingRemove = -1, kick = 0, fwTimer = 0, fwSide = 1;
-const resultEl = $('result'), spinBtn = $('spin'), fs = $('fs');
+const resultEl = $('result'), spinBtn = $('spin'), fs = $('fs'), raceBtn = $('race'), bottleBtn = $('bottle');
+let game = null;   // идущая мини-игра: { kind:'race'|'bottle', data, t0, ... }
+function setBusy() { spinBtn.disabled = raceBtn.disabled = bottleBtn.disabled = !!(spin || game); fs.disabled = !!spin; }
+function showResult(label, text, color) {
+  resultEl.querySelector('small').textContent = label; resultEl.querySelector('b').textContent = text;
+  resultEl.style.borderColor = color; resultEl.hidden = false;
+  resultEl.style.animation = 'none'; void resultEl.offsetWidth; resultEl.style.animation = '';
+}
 function dismissResult() {
   resultEl.hidden = true;
   if (pendingRemove >= 0 && items().length > MIN) { items().splice(pendingRemove, 1); refresh(); }
   pendingRemove = -1;
 }
 function startSpin() {
-  if (spin) return;
+  if (spin || game) return;
   audio();
   if (online) return post('spin');           // результат выбирает сервер — у всех он одинаковый
   dismissResult();
@@ -494,7 +562,7 @@ function beginSpin(from, to, dur, elapsed) {
   resultEl.hidden = true;
   disc.rotation.z = from;
   spin = { t0: performance.now() - elapsed, dur, from, to, last: indexAtPointer() };
-  spinBtn.disabled = fs.disabled = true; partyUntil = 0;
+  setBusy(); partyUntil = 0;
 }
 
 /* ---------- сеть: комната, зрители, общее колесо ---------- */
@@ -523,7 +591,12 @@ function connect() {
       else { state.items = m.items; state.remove = m.remove; refresh(); }
       setPlayers(m.players); post('cat', { cat: catOf() });
       if (m.spin) beginSpin(m.spin.from, m.spin.to, m.spin.dur, m.spin.elapsed); else if (!spin) disc.rotation.z = m.rot;
+      hypeOf.clear(); for (const id in m.hype || {}) hypeOf.set(id, m.hype[id]);
+      if (m.game) beginGame(m.game.kind, m.game.data, m.game.elapsed); else if (game) endGame();
     } else if (m.type === 'players') setPlayers(m.players);
+    else if (m.type === 'react') playReact(m.id, m.kind);
+    else if (m.type === 'hype') { if (m.id !== me.id) hypeOf.set(m.id, m.v); }
+    else if (m.type === 'game') beginGame(m.kind, m.data, 0);
     else if (m.type === 'items') { if (m.by !== me.id) { state.items = m.items; state.remove = m.remove; refresh(); } }
     else if (m.type === 'spin') beginSpin(m.from, m.to, m.dur, 0);
   };
@@ -550,10 +623,8 @@ function meChanged() {
 function finishSpin() {
   disc.rotation.z %= TAU;
   const idx = indexAtPointer(), it = items()[idx];
-  spin = null; spinBtn.disabled = fs.disabled = false;
-  resultEl.querySelector('b').textContent = it.text.trim() || '—';
-  resultEl.style.borderColor = it.color; resultEl.hidden = false;
-  resultEl.style.animation = 'none'; void resultEl.offsetWidth; resultEl.style.animation = '';
+  spin = null; setBusy();
+  showResult('Выпало', it.text.trim() || '—', it.color);
   if (state.remove && !online) pendingRemove = idx;   // онлайн выпавшую позицию убирает сервер
   if (tg) { try { tg.HapticFeedback.notificationOccurred('success'); } catch (e) {} }
   partyUntil = performance.now() + 3500;
@@ -631,6 +702,192 @@ $('music').checked = state.music; $('music').onchange = e => { state.music = e.t
 if (innerWidth <= 760) panel.classList.add('closed');
 $('toggle').onclick = () => panel.classList.toggle('closed');
 
+/* ---------- эффекты: летающие смайлы и кляксы ---------- */
+const texCache = new Map();
+function emojiTex(ch) {
+  let t = texCache.get(ch); if (t) return t;
+  const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  g.font = '96px system-ui,"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ch, 64, 70);
+  t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; texCache.set(ch, t); return t;
+}
+function bubbleTex(text) {
+  let t = texCache.get('b:' + text); if (t) return t;
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128; const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.beginPath(); g.ellipse(128, 54, 122, 50, 0, 0, TAU); g.fill();
+  g.beginPath(); g.moveTo(84, 92); g.lineTo(58, 126); g.lineTo(128, 100); g.fill();
+  g.fillStyle = '#2a0a18'; g.font = '800 54px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 128, 56);
+  t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; texCache.set('b:' + text, t); return t;
+}
+const fx = [], decals = [], splatGeo = new THREE.CircleGeometry(1, 14);
+function floater(map, x, y, z, o) {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent:true, depthWrite:false }));
+  sp.position.set(x, y, z); sp.scale.set(o.w || o.size, o.size, 1); scene.add(sp);
+  fx.push(Object.assign({ sp, max:o.life, vx:0, vy:0, vz:0, grav:0, wob:0, rot:0 }, o));
+}
+function splat(x, y, z) {
+  const p = disc.worldToLocal(new THREE.Vector3(x, y, z));
+  if (decals.length < 60) for (let i = 0; i < 5; i++) {
+    const m = mesh(splatGeo, new THREE.MeshBasicMaterial({ color: i ? 0xc4101a : 0xe0222a, transparent:true, depthWrite:false }),
+      p.x + (i ? (Math.random() - .5) * .8 : 0), p.y + (i ? (Math.random() - .5) * .8 : 0), .05 + i * .002);
+    m.scale.setScalar(i ? .07 + Math.random() * .12 : .28 + Math.random() * .12); disc.add(m); decals.push({ m, life: 5 + Math.random() });
+  }
+  for (let k = 0; k < 24; k++) emit(x, y, z + .15, (Math.random() - .5) * 4, (Math.random() - .2) * 3.5, Math.random() * 2.5, 1, .12, .08, .45 + Math.random() * .3);
+  beep(140, .1, .1, 'sawtooth'); beep(70, .18, .12, 'triangle', .03);
+}
+function updateFx(dt) {
+  for (let i = fx.length - 1; i >= 0; i--) {
+    const f = fx[i]; f.life -= dt; f.vy -= f.grav * dt;
+    f.sp.position.x += (f.vx + Math.sin(f.life * 7) * f.wob) * dt; f.sp.position.y += f.vy * dt; f.sp.position.z += f.vz * dt;
+    f.sp.material.rotation += f.rot * dt;
+    if (f.fade) f.sp.material.opacity = Math.min(1, f.life / f.max * 2.5);
+    if (f.life <= 0) { scene.remove(f.sp); f.sp.material.dispose(); fx.splice(i, 1); if (f.end) f.end(); }
+  }
+  for (let i = decals.length - 1; i >= 0; i--) {
+    const d = decals[i]; d.life -= dt; d.m.material.opacity = Math.min(.9, d.life / 2);
+    if (d.life <= 0) { disc.remove(d.m); d.m.material.dispose(); decals.splice(i, 1); }
+  }
+}
+
+/* ---------- реакции: помидор, сердечки, прыжок, мяу ---------- */
+function playReact(id, kind) {
+  const c = catById.get(id); if (!c) return;
+  const sc = c.scale.x, x = c.position.x, z = c.position.z, top = (2.6 + c.userData.hips.position.y) * sc;
+  if (kind === 'jump') { c.userData.hop = .6; sweep(300, 640, .22, .07); }
+  else if (kind === 'meow') { floater(bubbleTex('Мяу!'), x + .5 * sc, top + .8, z + .3, { size:.8, w:1.6, life:1.3, vy:.35, fade:true }); meow(); }
+  else if (kind === 'heart') {
+    for (let i = 0; i < 6; i++) setTimeout(() => floater(emojiTex('❤️'), x + (Math.random() - .5) * .9 * sc, top, z + .3,
+      { size:.35 + Math.random() * .25, life:1.5 + Math.random() * .5, vy:1.1 + Math.random() * .9, wob:.8, fade:true }), i * 70);
+    beep(880, .12, .04, 'sine'); beep(1320, .18, .04, 'sine', .1);
+  } else if (kind === 'tomato') {
+    const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * WR * .8, tx = Math.cos(a) * r, ty = WY + Math.sin(a) * r, tz = WZ + .12, T = .6, G = 9;
+    floater(emojiTex('🍅'), x, top, z, { size:.55, life:T, vx:(tx - x) / T, vy:(ty - top) / T + G * T / 2, vz:(tz - z) / T, grav:G, rot:9, end:() => splat(tx, ty, tz) });
+    sweep(520, 240, .2, .04);
+  }
+}
+let lastReact = 0;
+function react(kind) {
+  const n = performance.now(); if (n - lastReact < 250) return; lastReact = n;
+  audio(); if (tg) { try { tg.HapticFeedback.impactOccurred('light'); } catch (e) {} }
+  if (online) post('react', { kind }); else playReact(me.id, kind);   // онлайн реакцию всем (и мне) раздаёт сервер
+}
+document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => react(b.dataset.r));
+
+/* ---------- танцевальная битва: жми 🕺 в ритм — кот танцует активнее и растёт ---------- */
+const hypeOf = new Map(), danceBtn = $('dance'), comboEl = danceBtn.querySelector('b');
+let myHype = 0, sentHype = 0, sentAt = 0, combo = 0;
+const fire = new THREE.Sprite(new THREE.SpriteMaterial({ map:emojiTex('🔥'), transparent:true, depthWrite:false }));
+fire.scale.setScalar(.8); fire.visible = false; scene.add(fire);
+/* Где мы сейчас относительно сильной доли: ph — доля периода после удара, dist — секунд до ближайшего удара. Без музыки ритм тот же, по часам. */
+function beat() {
+  const music = mTimer && actx, p = music ? beatP : 60 / 165;
+  const now = music ? actx.currentTime - (actx.outputLatency || actx.baseLatency || 0) : performance.now() / 1000;
+  const ph = ((((now - (music ? beatT : 0)) / p) % 1) + 1) % 1;
+  return { ph, dist: Math.min(ph, 1 - ph) * p };
+}
+danceBtn.onpointerdown = () => {
+  const d = beat().dist, q = d < .06 ? 2 : d < .11 ? 1 : 0;   // точно / почти / мимо
+  combo = q ? combo + 1 : 0;
+  myHype = Math.max(0, Math.min(1, myHype + (q === 2 ? .09 : q === 1 ? .05 : -.12) + (q ? Math.min(combo, 10) * .004 : 0)));
+  comboEl.textContent = '×' + combo;
+  danceBtn.classList.remove('hit', 'miss'); void danceBtn.offsetWidth; danceBtn.classList.add(q ? 'hit' : 'miss');
+  setTimeout(() => danceBtn.classList.remove('hit', 'miss'), 160);
+  if (q) beep(q === 2 ? 1568 : 1175, .06, .04, 'triangle');
+  if (tg) { try { tg.HapticFeedback.impactOccurred(q ? 'medium' : 'soft'); } catch (e) {} }
+};
+function updateDance(dt, now) {
+  myHype = Math.max(0, myHype - dt * .05);
+  if (!myHype && combo) { combo = 0; comboEl.textContent = '×0'; }
+  hypeOf.set(me.id, myHype);
+  danceBtn.style.setProperty('--b', (1 - beat().ph).toFixed(3));
+  if (online && now - sentAt > 250 && (Math.abs(myHype - sentHype) > .04 || (!myHype && sentHype))) { sentHype = myHype; sentAt = now; post('hype', { v:+myHype.toFixed(2) }); }
+  let best = null, bh = .45;
+  for (const c of cats) if (c.userData.hype > bh) { bh = c.userData.hype; best = c; }
+  fire.visible = !!best;
+  if (best) fire.position.set(best.position.x, (3.0 + best.userData.hips.position.y) * best.scale.x + 1.05, best.position.z);
+}
+
+/* ---------- мини-игры: кошачьи бега и бутылочка ---------- */
+const PREP = 1500, BPREP = 1200;                       // мс на построение перед стартом / перед вращением бутылочки
+const gameCamZ = () => Math.min(27, Math.max(15, baseZ + 6));   // на время игры камера отъезжает, чтобы был виден пол перед колесом
+const kx = () => Math.tan(25 * Math.PI / 180) * camera.aspect;
+const bottle = new THREE.Group(); bottle.visible = false; scene.add(bottle);
+{
+  const glass = std(0x1faa55, { roughness:.15, metalness:.2, emissive:0x0a4020 }), b = new THREE.Group();
+  b.rotation.x = Math.PI / 2; b.position.y = .3; bottle.add(b);   // горлышко смотрит вдоль +z
+  b.add(mesh(new THREE.CylinderGeometry(.28, .28, .9, 20), glass, 0, -.25, 0));
+  b.add(mesh(new THREE.CylinderGeometry(.1, .28, .3, 20), glass, 0, .35, 0));
+  b.add(mesh(new THREE.CylinderGeometry(.1, .1, .4, 16), glass, 0, .7, 0));
+  b.add(mesh(new THREE.CylinderGeometry(.12, .12, .08, 16), gold, 0, .92, 0));
+  b.add(mesh(new THREE.CylinderGeometry(.285, .285, .4, 20), std(0xfff1d6), 0, -.25, 0));
+}
+const finish = (() => {
+  const c = document.createElement('canvas'); c.width = 32; c.height = 224; const g = c.getContext('2d');
+  for (let y = 0; y < 14; y++) for (let x = 0; x < 2; x++) { g.fillStyle = (x + y) % 2 ? '#fff' : '#111'; g.fillRect(x * 16, y * 16, 16, 16); }
+  const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter;
+  const m = mesh(new THREE.PlaneGeometry(.6, 4.2), new THREE.MeshBasicMaterial({ map:t }), 0, .02, 2.1);
+  m.rotation.x = -Math.PI / 2; m.visible = false; scene.add(m); return m;
+})();
+const bannerEl = $('banner'); let bannerT;
+function banner(text, ms) {
+  bannerEl.textContent = text; bannerEl.hidden = false; bannerEl.style.animation = 'none'; void bannerEl.offsetWidth; bannerEl.style.animation = '';
+  clearTimeout(bannerT); bannerT = setTimeout(() => { bannerEl.hidden = true; }, ms);
+}
+/* Офлайн исход игры придумывает страница — в том же виде, в каком онлайн его присылает сервер. */
+function makeGame(kind) {
+  const ids = players.map(p => p.id);
+  if (kind === 'race') return { runners: ids.map(id => ({ id, t: 6000 + Math.random() * 3000, k: 1 + Math.floor(Math.random() * 3), s: Math.random() < .5 ? -1 : 1 })) };
+  return { order: ids, target: rnd(ids), turns: 4 + Math.floor(Math.random() * 3), dur: 5000 + Math.random() * 1500 };
+}
+function startGame(kind) { if (spin || game) return; audio(); if (online) post(kind); else beginGame(kind, makeGame(kind), 0); }
+function beginGame(kind, data, elapsed) {
+  dismissResult();
+  game = { kind, data, t0: performance.now() - elapsed, step: 0, last: 0 };
+  if (kind === 'race') { const ts = data.runners.map(r => r.t); game.min = Math.min(...ts); game.total = PREP + Math.max(...ts) + 2500; }
+  else game.total = BPREP + data.dur + 3000;
+  setBusy();
+}
+function endGame() { game = null; finish.visible = bottle.visible = false; setBusy(); }
+function win(label, id) {
+  const p = players.find(p => p.id === id), c = catById.get(id);
+  showResult(label, p ? (p.name.trim() || 'Кот') : 'Кот', p ? p.fur : '#ffd60a');
+  partyUntil = performance.now() + 2500; fanfare();
+  for (let i = 0; i < 6; i++) setTimeout(() => launch(i % 2 ? 1 : -1), i * 160);
+  if (c) for (let i = 0; i < 3; i++) setTimeout(() => { c.userData.hop = .6; }, i * 700);
+  if (tg) { try { tg.HapticFeedback.notificationOccurred('success'); } catch (e) {} }
+}
+function updateGame(now) {
+  for (const c of cats) c.userData.g = null;
+  if (!game) return;
+  const t = now - game.t0, camZ = gameCamZ(), d = game.data;
+  if (game.kind === 'race') {
+    // дорожки идут слева направо перед колесом; у каждого кота своё время t и свои рывки (k, s), финиш у всех в одной точке
+    const n = d.runners.length, L = Math.min(n, 8), zA = .8, zB = 3.4, X = Math.min(8.5, (camZ - zB) * kx() - 1.2);
+    finish.visible = true; finish.position.x = X + .7;
+    d.runners.forEach((r, i) => {
+      const c = catById.get(r.id); if (!c) return;
+      const u = Math.max(0, Math.min(1, (t - PREP) / r.t)), p = u + r.s * (.8 / (TAU * r.k)) * Math.sin(TAU * r.k * u);
+      c.userData.g = { x: -X + 2 * X * p, z: L > 1 ? zA + (i % L) * (zB - zA) / (L - 1) : (zA + zB) / 2, ry: u < 1 ? Math.PI / 2 : 0, s: .55, run: t > PREP && u < 1, direct: t > PREP };
+    });
+    if (game.step < 4) {
+      const cd = Math.min(3, Math.floor(t / 500));                // «3», «2», «1», «МАРШ!»
+      if (t > PREP + 600) game.step = 4;                          // зашли посреди забега — без отсчёта
+      else if (cd >= game.step) { banner(cd < 3 ? String(3 - cd) : 'МАРШ!', cd < 3 ? 460 : 800); beep(cd < 3 ? 660 : 1320, cd < 3 ? .1 : .3, .08); game.step = cd + 1; }
+    } else if (game.step === 4 && t >= PREP + game.min) { game.step = 5; win('Победитель бегов 🏁', d.runners.find(r => r.t === game.min).id); }
+  } else {
+    // коты встают в круг лицом к центру; бутылочка останавливается горлышком на выбранном коте
+    const n = d.order.length, cz = 1.5, R = Math.max(1.2, Math.min(2.8, (camZ - cz) * kx() - 1)), s = Math.max(.3, Math.min(.7, 13 / n));
+    d.order.forEach((id, i) => { const c = catById.get(id); if (!c) return; const a = TAU * i / n; c.userData.g = { x: R * Math.sin(a), z: cz + R * Math.cos(a), ry: a + Math.PI, s }; });
+    const end = TAU * d.turns + TAU * Math.max(0, d.order.indexOf(d.target)) / n;
+    const p = Math.max(0, Math.min(1, (t - BPREP) / d.dur)), ang = end * (1 - Math.pow(1 - p, 4));
+    bottle.visible = true; bottle.position.set(0, 0, cz); bottle.rotation.y = ang; bottle.scale.setScalar(Math.min(1, t / 400) * (R > 2 ? 1.6 : 1));
+    const idx = Math.floor(ang / (TAU / n) + .5);
+    if (p > 0 && p < 1 && idx !== game.last) { game.last = idx; tick(); }
+    if (!game.step && p >= 1) { game.step = 1; win('Бутылочка выбрала 🍾', d.target); }
+  }
+  if (t >= game.total) endGame();
+}
+raceBtn.onclick = () => startGame('race'); bottleBtn.onclick = () => startGame('bottle');
+
 /* ---------- цикл ---------- */
 let prev = performance.now();
 function frame(now) {
@@ -649,13 +906,16 @@ function frame(now) {
   bulbM[0].emissiveIntensity = blink ? 1.4 : .15; bulbM[1].emissiveIntensity = blink ? .15 : 1.4;
   discoA.position.set(Math.sin(t*.9)*7, 6.5, Math.cos(t*.7)*3 - 1);
   discoB.position.set(Math.sin(t*.9 + Math.PI)*7, 6.5, Math.cos(t*.7 + 2)*3 - 1);
+  if (game) camKind = game.kind;
+  if (Math.abs((game ? 1 : 0) - camK) > .002) { camK += ((game ? 1 : 0) - camK) * (1 - Math.exp(-4 * dt)); placeCamera(); }
+  updateGame(now); updateDance(dt, now);
   danceCats(t, dt, !!spin, now < partyUntil);
-  updateFireworks(dt);
+  updateFireworks(dt); updateFx(dt);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 refresh(); saveMe(); resize(); connect(); requestAnimationFrame(frame);
-window.__wheel = { startSpin, state, setPlayers, me };
+window.__wheel = { startSpin, state, setPlayers, me, startGame, beginGame, playReact, hypeOf, get game() { return game; }, get players() { return players; } };
 })();
 </script>
 </body>

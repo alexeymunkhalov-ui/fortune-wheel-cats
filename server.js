@@ -33,7 +33,7 @@ async function startBot() {
 function getRoom(id) {
   let r = rooms.get(id);
   if (!r) {
-    r = { id, fresh: true, remove: false, rot: 0, spin: null, pending: -1, timer: null, gc: null, players: new Map(),
+    r = { id, fresh: true, remove: false, rot: 0, spin: null, game: null, pending: -1, timer: null, gc: null, players: new Map(),
       items: ['Пицца', 'Суши', 'Бургер', 'Паста', 'Шаурма', 'Рамен', 'Плов', 'Салат'].map((text, i) => ({ text, color: PALETTE[i] })) };
     rooms.set(id, r);
   }
@@ -57,6 +57,22 @@ function applyRemove(r) {
   if (r.pending >= 0 && r.items.length > MIN) { r.items.splice(r.pending, 1); sendItems(r, null); }
   r.pending = -1;
 }
+// Мини-игры: исход выбирает сервер, чтобы у всех зрителей он был одинаковый. Длительности совпадают с клиентскими.
+const REACTS = ['tomato', 'heart', 'jump', 'meow'];
+function startGame(r, kind) {
+  const ids = [...r.players.keys()]; if (!ids.length) return;
+  let data, dur;
+  if (kind === 'race') {
+    const runners = ids.map(id => ({ id, t: Math.round(6000 + Math.random() * 3000), k: 1 + Math.floor(Math.random() * 3), s: Math.random() < .5 ? -1 : 1 }));
+    data = { runners }; dur = 1500 + Math.max(...runners.map(x => x.t)) + 2500;
+  } else {
+    data = { order: ids, target: ids[Math.floor(Math.random() * ids.length)], turns: 4 + Math.floor(Math.random() * 3), dur: Math.round(5000 + Math.random() * 1500) };
+    dur = 1200 + data.dur + 3000;
+  }
+  r.game = { kind, data, start: Date.now() };
+  broadcast(r, 'game', { kind, data });
+  setTimeout(() => { r.game = null; }, dur);
+}
 function act(r, pid, m) {
   const p = r.players.get(pid); if (!p) return;
   if (m.type === 'cat') {
@@ -66,7 +82,7 @@ function act(r, pid, m) {
     const items = cleanItems(m.items); if (!items) return;
     clearTimeout(r.timer); r.pending = -1;
     r.items = items; r.remove = !!m.remove; sendItems(r, pid);
-  } else if (m.type === 'spin' && !r.spin) {
+  } else if (m.type === 'spin' && !r.spin && !r.game) {
     applyRemove(r);
     const from = r.rot, to = from + TAU * (5 + Math.floor(Math.random() * 3)) + Math.random() * TAU, dur = 6000 + Math.random() * 1500;
     r.spin = { from, to, dur, start: Date.now() };
@@ -79,6 +95,12 @@ function act(r, pid, m) {
         r.timer = setTimeout(() => applyRemove(r), 5000);
       }
     }, dur);
+  } else if ((m.type === 'race' || m.type === 'bottle') && !r.spin && !r.game) startGame(r, m.type);
+  else if (m.type === 'react' && REACTS.includes(m.kind)) {
+    const now = Date.now(); if (now - (p.rt || 0) < 200) return; p.rt = now;
+    broadcast(r, 'react', { id: pid, kind: m.kind });
+  } else if (m.type === 'hype') {
+    p.hype = Math.min(1, Math.max(0, +m.v || 0)); broadcast(r, 'hype', { id: pid, v: p.hype });
   }
 }
 
@@ -95,7 +117,9 @@ http.createServer((req, res) => {
     let cat; try { cat = cleanCat(JSON.parse(u.searchParams.get('cat') || '{}')); } catch (e) { cat = cleanCat({}); }
     const me = { res, cat }; r.players.set(pid, me);
     send(res, 'init', { items: r.items, remove: r.remove, rot: r.rot, fresh: r.fresh, players: playerList(r),
-      spin: r.spin && { from: r.spin.from, to: r.spin.to, dur: r.spin.dur, elapsed: Date.now() - r.spin.start } });
+      spin: r.spin && { from: r.spin.from, to: r.spin.to, dur: r.spin.dur, elapsed: Date.now() - r.spin.start },
+      game: r.game && { kind: r.game.kind, data: r.game.data, elapsed: Date.now() - r.game.start },
+      hype: Object.fromEntries([...r.players].filter(([, q]) => q.hype).map(([id, q]) => [id, q.hype])) });
     r.fresh = false;
     for (const [id, p] of r.players) if (id !== pid) send(p.res, 'players', { players: playerList(r) });
     const ping = setInterval(() => res.write(': ping\n\n'), 20000);
