@@ -495,7 +495,11 @@ function beginSpin(from, to, dur, elapsed) {
 }
 
 /* ---------- сеть: комната, зрители, общее колесо ---------- */
-let roomId = new URLSearchParams(location.search).get('room') || (tg && (tg.initDataUnsafe.start_param || tg.initDataUnsafe.chat_instance)) || 'main';
+/* Комната: из ссылки-приглашения, иначе на каждый запуск своя новая — общих комнат «по умолчанию» нет. */
+const newRoom = () => 'r' + Math.random().toString(36).slice(2, 10);
+const linkRoom = new URLSearchParams(location.search).get('room') || (tg && tg.initDataUnsafe.start_param) || '';
+let roomId = /^[\w-]{1,64}$/.test(linkRoom) ? linkRoom : newRoom();
+if (!tg && !linkRoom && /^https?:$/.test(location.protocol)) try { history.replaceState(null, '', location.pathname + '?room=' + roomId); } catch (e) {}
 const api = p => `${p}?room=${encodeURIComponent(roomId)}&id=${me.id}`;
 const catOf = () => { const c = Object.assign({}, me); delete c.id; return c; };
 function post(type, data) { if (online) fetch(api('act'), { method:'POST', body: JSON.stringify(Object.assign({ type }, data)) }).catch(() => {}); }
@@ -524,14 +528,14 @@ function connect() {
 /* «Позвать»: ссылка в эту же комнату. В Telegram — окно «Поделиться», в браузере — копирование ссылки. */
 $('invite').onclick = () => {
   const btn = $('invite'), flashBtn = t => { btn.textContent = t; setTimeout(() => btn.textContent = '🔗 Позвать', 1800); };
-  let room = /^[\w-]{1,64}$/.test(roomId) ? roomId : 'main';
   if (tg && TG_APP_LINK) {
-    // Из общей комнаты зовём в новую отдельную и сами переходим туда же — иначе гости из группы окажутся в другой комнате.
-    if (room === 'main') { room = roomId = 'r' + Math.random().toString(36).slice(2, 10); connect(); }
-    const link = TG_APP_LINK + '?startapp=' + room;
+    // Пока в комнате никого, кроме меня, каждое приглашение ведёт в новую комнату с моим текущим колесом:
+    // разные чаты не смешиваются и никто не видит остатки прошлой игры. Если гости уже есть — зовём к ним.
+    if (online && !players.some(p => p.id !== me.id)) { roomId = newRoom(); connect(); }
+    const link = TG_APP_LINK + '?startapp=' + roomId;
     return tg.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Крутим колесо фортуны — заходи котом!'));
   }
-  const link = location.origin + location.pathname + (room === 'main' ? '' : '?room=' + room);
+  const link = location.origin + location.pathname + '?room=' + roomId;
   (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(() => flashBtn('✓ Ссылка скопирована'), () => window.prompt('Ссылка на комнату:', link));
 };
 function setPlayers(list) { players = list.map(p => p.id === me.id ? Object.assign({}, me) : p); syncCats(); }
