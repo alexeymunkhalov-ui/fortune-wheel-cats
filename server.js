@@ -1,12 +1,34 @@
 // Сервер колеса фортуны: раздаёт страницу и синхронизирует комнаты (зрители = коты, общее колесо, общий результат).
 // Без зависимостей: node server.js  (порт — переменная PORT, по умолчанию 8765)
-const http = require('http'), fs = require('fs'), path = require('path');
+const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto');
 
 const PORT = process.env.PORT || 8765, TAU = Math.PI * 2, MIN = 2, MAX = 24, MAX_PLAYERS = 60;
 const PAGE = path.join(__dirname, 'fortune-wheel.html');
 const HEX = /^#[0-9a-f]{6}$/i, HATS = ['cone', 'top', 'crown', 'none'];
 const PALETTE = ['#ff4d6d', '#ff9f1c', '#ffd60a', '#2ec4b6', '#3a86ff', '#8338ec', '#ff006e', '#06d6a0'];
 const rooms = new Map();
+
+// Бот: ответ на /start с кнопкой «Открыть». Включается, если задана переменная BOT_TOKEN (токен из @BotFather).
+const BOT_TOKEN = process.env.BOT_TOKEN || '', TG_API = process.env.TG_API || 'https://api.telegram.org';
+const APP_URL = (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, '');
+const HOOK_SECRET = BOT_TOKEN ? crypto.createHash('sha256').update('hook:' + BOT_TOKEN).digest('hex') : '';
+const HELLO = 'Привет! Это колесо фортуны с танцующими котами 🎡🐱\n\nЖми «Открыть», настраивай позиции и зови друзей — каждый, кто зайдёт, появится в комнате своим котом.';
+let botName = '';
+const tg = (method, body) => fetch(`${TG_API}/bot${BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
+  .then(r => r.json()).catch(() => ({ ok: false }));
+function onUpdate(up) {
+  const m = up && up.message; if (!m || !m.chat || !/^\/start(@\w+)?(\s|$)/.test(m.text || '')) return;
+  // Кнопка web_app работает только в личном чате; в группах даём обычную ссылку на приложение.
+  const btn = m.chat.type === 'private' ? { text: '🎡 Открыть', web_app: { url: APP_URL + '/' } } : { text: '🎡 Открыть', url: `https://t.me/${botName}?startapp` };
+  tg('sendMessage', { chat_id: m.chat.id, text: HELLO, reply_markup: { inline_keyboard: [[btn]] } });
+}
+async function startBot() {
+  if (!BOT_TOKEN || !APP_URL) return;
+  const me = await tg('getMe'); if (!me.ok) return console.log('Бот: токен не подошёл, /start работать не будет');
+  botName = me.result.username;
+  const r = await tg('setWebhook', { url: APP_URL + '/tg', secret_token: HOOK_SECRET, allowed_updates: ['message'] });
+  console.log(r.ok ? `Бот @${botName}: /start подключён` : 'Бот: не удалось подключить /start');
+}
 
 function getRoom(id) {
   let r = rooms.get(id);
@@ -94,6 +116,12 @@ http.createServer((req, res) => {
     });
     return;
   }
+  if (req.method === 'POST' && u.pathname === '/tg' && HOOK_SECRET && req.headers['x-telegram-bot-api-secret-token'] === HOOK_SECRET) {
+    let body = '';
+    req.on('data', d => { body += d; if (body.length > 100000) req.destroy(); });
+    req.on('end', () => { try { onUpdate(JSON.parse(body)); } catch (e) {} res.writeHead(200); res.end(); });
+    return;
+  }
   if (req.method === 'GET' && (u.pathname === '/' || u.pathname === '/fortune-wheel.html')) {
     return fs.readFile(PAGE, (err, data) => {
       if (err) { res.writeHead(500); return res.end('no page'); }
@@ -101,4 +129,4 @@ http.createServer((req, res) => {
     });
   }
   res.writeHead(404); res.end();
-}).listen(PORT, () => console.log(`Колесо фортуны: http://localhost:${PORT}`));
+}).listen(PORT, () => { console.log(`Колесо фортуны: http://localhost:${PORT}`); startBot(); });

@@ -495,16 +495,18 @@ function beginSpin(from, to, dur, elapsed) {
 }
 
 /* ---------- сеть: комната, зрители, общее колесо ---------- */
-const roomId = new URLSearchParams(location.search).get('room') || (tg && (tg.initDataUnsafe.start_param || tg.initDataUnsafe.chat_instance)) || 'main';
+let roomId = new URLSearchParams(location.search).get('room') || (tg && (tg.initDataUnsafe.start_param || tg.initDataUnsafe.chat_instance)) || 'main';
 const api = p => `${p}?room=${encodeURIComponent(roomId)}&id=${me.id}`;
 const catOf = () => { const c = Object.assign({}, me); delete c.id; return c; };
 function post(type, data) { if (online) fetch(api('act'), { method:'POST', body: JSON.stringify(Object.assign({ type }, data)) }).catch(() => {}); }
 let itT, catT;
 const pushItems = () => { clearTimeout(itT); itT = setTimeout(() => post('items', { items: state.items, remove: state.remove }), 150); };
 const pushCat = () => { clearTimeout(catT); catT = setTimeout(() => post('cat', { cat: catOf() }), 150); };
+let es;
 function connect() {
   if (!/^https?:$/.test(location.protocol) || !window.EventSource) return;
-  const es = new EventSource(api('events') + '&cat=' + encodeURIComponent(JSON.stringify(catOf())));
+  if (es) es.close();
+  es = new EventSource(api('events') + '&cat=' + encodeURIComponent(JSON.stringify(catOf())));
   es.onerror = () => { online = false; syncCats(); };
   es.onmessage = e => {
     const m = JSON.parse(e.data);
@@ -522,9 +524,11 @@ function connect() {
 /* «Позвать»: ссылка в эту же комнату. В Telegram — окно «Поделиться», в браузере — копирование ссылки. */
 $('invite').onclick = () => {
   const btn = $('invite'), flashBtn = t => { btn.textContent = t; setTimeout(() => btn.textContent = '🔗 Позвать', 1800); };
-  const room = /^[\w-]{1,64}$/.test(roomId) ? roomId : 'main';
+  let room = /^[\w-]{1,64}$/.test(roomId) ? roomId : 'main';
   if (tg && TG_APP_LINK) {
-    const link = TG_APP_LINK + '?startapp' + (room === 'main' ? '' : '=' + room);
+    // Из общей комнаты зовём в новую отдельную и сами переходим туда же — иначе гости из группы окажутся в другой комнате.
+    if (room === 'main') { room = roomId = 'r' + Math.random().toString(36).slice(2, 10); connect(); }
+    const link = TG_APP_LINK + '?startapp=' + room;
     return tg.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Крутим колесо фортуны — заходи котом!'));
   }
   const link = location.origin + location.pathname + (room === 'main' ? '' : '?room=' + room);
