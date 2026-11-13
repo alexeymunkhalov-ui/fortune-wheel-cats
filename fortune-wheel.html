@@ -73,21 +73,32 @@
   .ksong { display:flex; flex-direction:column; gap:6px; padding:10px; border:1px solid var(--line); border-radius:10px; flex:none; }
   .ksong .row input { flex:1; }
   .dash { padding:10px; border-radius:10px; border:1px dashed var(--line); background:none; color:var(--text); cursor:pointer; font:inherit; flex:none; }
-  #slots { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(140px + env(safe-area-inset-bottom, 0px)); width:min(400px, calc(100% - 20px)); max-height:calc(100% - 200px); overflow-y:auto; z-index:4;
+  .gpanel { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(140px + env(safe-area-inset-bottom, 0px)); width:min(400px, calc(100% - 20px)); max-height:calc(100% - 200px); overflow-y:auto; z-index:4;
     display:flex; flex-direction:column; gap:10px; padding:12px 14px 14px; background:rgba(18,10,36,.95); border:2px solid var(--accent2); border-radius:18px; box-shadow:0 0 40px rgba(255,214,10,.3); }
-  #slots header { display:flex; align-items:center; gap:10px; }
-  #slots header b { flex:1; font-size:17px; }
-  #slotFish { font-weight:800; color:var(--accent2); white-space:nowrap; }
+  .gpanel header { display:flex; align-items:center; gap:10px; }
+  .gpanel header b { flex:1; font-size:17px; }
+  .gfish { font-weight:800; color:var(--accent2); white-space:nowrap; }
   .reels { display:flex; gap:8px; justify-content:center; }
   .reel { flex:1; max-width:104px; aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:52px; line-height:1; background:linear-gradient(180deg,#0b0618,#2a1a52 50%,#0b0618); border:2px solid var(--line); border-radius:14px; }
-  #slotMsg { text-align:center; font-weight:700; min-height:21px; }
-  #slotMsg.win { color:#7cff8a; } #slotMsg.lose { color:#ff9a9a; }
+  .gmsg { text-align:center; font-weight:700; min-height:21px; }
+  .gmsg.win { color:#7cff8a; } .gmsg.lose { color:#ff9a9a; }
+  .hlabel { display:flex; justify-content:space-between; color:var(--muted); font-size:13px; }
+  .hlabel b { color:var(--text); }
+  .hand { display:flex; gap:6px; flex-wrap:wrap; min-height:64px; align-items:center; }
+  .card { width:44px; height:62px; flex:none; border-radius:8px; background:#fff; color:#151515; font-weight:800; font-size:18px; line-height:1.15; display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.4); }
+  .card.new { animation:deal .22s ease-out; }
+  .card.red { color:#d4121a; }
+  .card.back { background:repeating-linear-gradient(45deg,#8338ec,#8338ec 6px,#5a1fb8 6px,#5a1fb8 12px); color:#fff; font-size:22px; }
+  @keyframes deal { from { transform:translateY(-18px) rotate(-8deg); opacity:0; } }
+  .acts { display:flex; gap:8px; }
+  .acts button { flex:1; padding:12px 0; border-radius:12px; border:1px solid var(--line); background:#261a48; color:var(--text); font:inherit; font-weight:800; cursor:pointer; }
+  .acts button:disabled { opacity:.4; cursor:default; }
   .bets { display:flex; gap:6px; }
   .bets button { flex:1; padding:8px 0; border-radius:10px; border:1px solid var(--line); background:#261a48; color:var(--text); font:inherit; font-weight:700; cursor:pointer; }
   .bets button.on { background:var(--accent); border-color:var(--accent); }
   .bets button:disabled { opacity:.35; cursor:default; }
-  #slotGo { padding:13px; border:0; border-radius:999px; font:inherit; font-size:18px; font-weight:800; letter-spacing:.04em; color:#2a0a18; background:linear-gradient(180deg,#ffe45c,#ffb300); box-shadow:0 4px 0 #b36b00; cursor:pointer; }
-  #slotGo:disabled { opacity:.5; cursor:default; }
+  .gogo { padding:13px; border:0; border-radius:999px; font:inherit; font-size:18px; font-weight:800; letter-spacing:.04em; color:#2a0a18; background:linear-gradient(180deg,#ffe45c,#ffb300); box-shadow:0 4px 0 #b36b00; cursor:pointer; }
+  .gogo:disabled { opacity:.5; cursor:default; }
   .sinfo { display:flex; justify-content:space-between; color:var(--muted); font-size:13px; }
   .sinfo a { color:var(--accent2); cursor:pointer; }
   #slotPayTable { color:var(--muted); font-size:13px; line-height:1.7; }
@@ -111,7 +122,9 @@
     #karText { font-size:21px; }
     #panel { position:absolute; inset:auto 0 0 0; width:auto; height:62%; border-left:0; border-top:1px solid var(--line); border-radius:16px 16px 0 0; z-index:5; }
     #spin { font-size:18px; padding:14px 22px; }
-    .gbtn { width:50px; height:50px; }
+    .gbtn { width:44px; height:44px; font-size:22px; }
+    #bar > div { gap:8px; }
+    #spin { letter-spacing:.02em; }
     .reel { font-size:44px; }
     #banner { font-size:48px; }
     #panel.kb { border-radius:0; }
@@ -139,16 +152,30 @@
     <div id="who" title="Сколько зрителей в комнате">🐱 1</div>
     <button id="invite" type="button">🔗 Позвать</button>
     <button id="toggle">⚙ Настроить</button>
-    <div id="slots" hidden>
-      <header><b>🎰 Кото-слоты</b><span id="slotFish"></span><button class="sm" id="slotClose" type="button" aria-label="Закрыть" title="Закрыть">✕</button></header>
+    <div id="slots" class="gpanel" hidden>
+      <header><b>🎰 Кото-слоты</b><span id="slotFish" class="gfish"></span><button class="sm" id="slotClose" type="button" aria-label="Закрыть" title="Закрыть">✕</button></header>
       <div class="reels"><div class="reel">🐟</div><div class="reel">🐟</div><div class="reel">🐟</div></div>
-      <div id="slotMsg">Три одинаковых — большой улов, пара — ×1,4</div>
+      <div id="slotMsg" class="gmsg">Три одинаковых — большой улов, пара — ×1,4</div>
       <div class="bets"><button type="button" data-bet="10">10</button><button type="button" data-bet="50">50</button><button type="button" data-bet="100">100</button><button type="button" data-bet="250">250</button><button type="button" data-bet="all">Всё</button></div>
-      <button id="slotGo" type="button"></button>
+      <button id="slotGo" class="gogo" type="button"></button>
       <div class="sinfo"><span id="slotLeft"></span><a id="slotPay">Выплаты</a></div>
       <div id="slotPayTable" hidden>🐟🐟🐟 ×5 · 🐭🐭🐭 ×8 · 🧶🧶🧶 ×12 · 🥛🥛🥛 ×12<br>👑👑👑 ×25 · 7️⃣7️⃣7️⃣ ×100 · любая пара ×1,4<br>У каждого 1000 рыбок и 20 вращений. Побеждает тот, у кого в конце больше рыбок.</div>
       <div id="slotTop"></div>
       <button class="dash" id="slotNew" type="button">↺ Новая игра для всех</button>
+    </div>
+    <div id="bj" class="gpanel" hidden>
+      <header><b>🃏 Блекджек</b><span id="bjFish" class="gfish"></span><button class="sm" id="bjClose" type="button" aria-label="Закрыть" title="Закрыть">✕</button></header>
+      <div class="hlabel"><span>Дилер</span><b id="bjDT"></b></div>
+      <div class="hand" id="bjD"></div>
+      <div class="hlabel"><span>Вы</span><b id="bjPT"></b></div>
+      <div class="hand" id="bjP"></div>
+      <div id="bjMsg" class="gmsg"></div>
+      <div class="bets" id="bjBets"><button type="button" data-bjbet="10">10</button><button type="button" data-bjbet="50">50</button><button type="button" data-bjbet="100">100</button><button type="button" data-bjbet="250">250</button><button type="button" data-bjbet="all">Всё</button></div>
+      <button id="bjDeal" class="gogo" type="button"></button>
+      <div class="acts" id="bjActs" hidden><button type="button" id="bjHit">Ещё</button><button type="button" id="bjStand">Хватит</button><button type="button" id="bjDouble">Удвоить</button></div>
+      <div class="sinfo"><span id="bjLeft"></span><a id="bjRules">Правила</a></div>
+      <div id="bjRulesText" hidden style="color:var(--muted);font-size:13px;line-height:1.6">Наберите больше дилера, но не больше 21. Туз — 1 или 11, картинки — 10. Дилер берёт до 17. Блекджек с раздачи платит 3:2, победа — 1:1, ничья возвращает ставку. «Удвоить» — удвоить ставку и взять ровно одну карту. Рыбки общие со слотами; на игру 10 раздач.</div>
+      <div id="bjTop"></div>
     </div>
     <div id="banner" hidden></div>
     <div id="bar">
@@ -164,6 +191,7 @@
         <button id="spin">КРУТИТЬ!</button>
         <button class="rbtn gbtn" type="button" id="bottle" title="Бутылочка">🍾</button>
         <button class="rbtn gbtn" type="button" id="slotBtn" title="Кото-слоты на рыбки">🎰</button>
+        <button class="rbtn gbtn" type="button" id="bjBtn" title="Блекджек на рыбки">🃏</button>
       </div>
     </div>
   </div>
@@ -669,14 +697,16 @@ function connect() {
       else { state.items = m.items; state.remove = m.remove; refresh(); }
       setPlayers(m.players); post('cat', { cat: catOf() });
       if (m.spin) beginSpin(m.spin.from, m.spin.to, m.spin.dur, m.spin.elapsed); else if (!spin) disc.rotation.z = m.rot;
-      slotTable = m.slots || []; renderSlots();
+      slotTable = m.slots || []; bjHand = m.bj || null; bjBusy = false; renderSlots(); renderBj();
       hypeOf.clear(); for (const id in m.hype || {}) hypeOf.set(id, m.hype[id]);
       if (m.game) beginGame(m.game.kind, m.game.data, m.game.elapsed); else if (game) endGame();
     } else if (m.type === 'players') setPlayers(m.players);
     else if (m.type === 'kar') { if (m.by !== me.id) { karSongs = m.songs; renderKar(); } }
     else if (m.type === 'slot') slotResult(m);
-    else if (m.type === 'slots') { slotTable = m.table; slotAnim = null; $('slotMsg').className = ''; $('slotMsg').textContent = 'Новая игра! У всех снова 1000 рыбок'; renderSlots(); }
-    else if (m.type === 'slotno') { slotAnim = null; $('slotMsg').className = ''; $('slotMsg').textContent = 'Не получилось — попробуйте ещё раз'; renderSlots(); }
+    else if (m.type === 'bj') bjUpdate(m);
+    else if (m.type === 'bjend') bjSeen(m);
+    else if (m.type === 'slots') { bjHand = null; bjBusy = false; slotTable = m.table; slotAnim = null; $('slotMsg').className = 'gmsg'; $('slotMsg').textContent = 'Новая игра! У всех снова 1000 рыбок'; renderSlots(); }
+    else if (m.type === 'slotno') { slotAnim = null; $('slotMsg').className = 'gmsg'; $('slotMsg').textContent = 'Не получилось — попробуйте ещё раз'; renderSlots(); }
     else if (m.type === 'react') playReact(m.id, m.kind);
     else if (m.type === 'hype') { if (m.id !== me.id) hypeOf.set(m.id, m.v); }
     else if (m.type === 'game') beginGame(m.kind, m.data, 0);
@@ -1040,7 +1070,8 @@ const SYM = ['🐟', '🐭', '🧶', '🥛', '👑', '7️⃣'], SLOT = [[5, 5],
 const slotEl = $('slots'), reelEls = [...slotEl.querySelectorAll('.reel')], slotMsg = $('slotMsg');
 let slotTable = [], slotBet = '50', slotAnim = null;
 const fmt = n => String(n).replace(/\B(?=(\d{3})+$)/g, ' ');
-const mySlot = () => slotTable.find(x => x.id === me.id) || { id:me.id, name:me.name, fish:FISH, spins:SPINS };
+const BJ_HANDS = 10;
+const mySlot = () => slotTable.find(x => x.id === me.id) || { id:me.id, name:me.name, fish:FISH, spins:SPINS, hands:BJ_HANDS };
 const curBet = () => slotBet === 'all' ? mySlot().fish : +slotBet;
 function textTex(text, color) {
   const c = document.createElement('canvas'); c.width = 384; c.height = 128; const g = c.getContext('2d');
@@ -1054,33 +1085,42 @@ function renderSlots() {
   slotEl.querySelectorAll('[data-bet]').forEach(b => { const v = b.dataset.bet === 'all' ? my.fish : +b.dataset.bet; b.classList.toggle('on', b.dataset.bet === slotBet); b.disabled = v < 1 || v > my.fish; });
   $('slotGo').disabled = !!slotAnim || my.spins <= 0 || bet < 1 || bet > my.fish;
   $('slotGo').textContent = my.spins <= 0 ? 'Вращения кончились' : my.fish <= 0 ? 'Рыбки кончились' : bet > my.fish ? 'Ставка больше улова' : `КРУТИТЬ · ${fmt(bet)} 🐟`;
-  const rows = slotTable.slice(); if (!rows.some(x => x.id === me.id)) rows.push(my);
-  rows.sort((a, b) => b.fish - a.fish);
-  const top = $('slotTop'); top.textContent = '';
+  renderTop($('slotTop'));
+}
+function renderTop(top) {   // общая таблица рыбок — её показывают и слоты, и блекджек
+  const rows = slotTable.slice(); if (!rows.some(x => x.id === me.id)) rows.push(mySlot());
+  rows.sort((a, b) => b.fish - a.fish); top.textContent = '';
   rows.slice(0, 10).forEach((x, i) => {
     const d = document.createElement('div'), n = document.createElement('span'), b = document.createElement('b');
-    d.className = 'srow' + (x.id === me.id ? ' me' : ''); n.textContent = `${i + 1}. ${(x.name || '').trim() || 'Кот'}`; b.textContent = `${fmt(x.fish)} 🐟 · ещё ${x.spins}`;
+    d.className = 'srow' + (x.id === me.id ? ' me' : ''); n.textContent = `${i + 1}. ${(x.name || '').trim() || 'Кот'}`; b.textContent = `${fmt(x.fish)} 🐟`;
     d.append(n, b); top.append(d);
   });
 }
+function fishFloat(id, d) {   // улов или проигрыш всплывает над котом игрока — это видят все
+  const c = catById.get(id); if (!c) return null;
+  floater(textTex((d >= 0 ? '+' : '−') + fmt(Math.abs(d)) + ' 🐟', d > 0 ? '#7cff8a' : d < 0 ? '#ff9a9a' : '#ffffff'), c.position.x, (3.0 + c.userData.hips.position.y) * c.scale.x + 1.1, c.position.z + .2,
+    { size:.6, w:1.8, life:1.7, vy:.6, fade:true, ownMap:true });
+  return c;
+}
+function fishWinner(label, w) {
+  setTimeout(() => {
+    showResult(label, `${(w.name || '').trim() || 'Кот'} — ${fmt(w.fish)} 🐟`, '#ffd60a');
+    partyUntil = performance.now() + 2500; fanfare(); for (let i = 0; i < 6; i++) setTimeout(() => launch(i % 2 ? 1 : -1), i * 160);
+  }, 500);
+}
 function localSlot(bet) {   // офлайн: то же, что делает сервер, но только для меня
-  let st = slotTable.find(x => x.id === me.id); if (!st) { st = { id:me.id, name:me.name, fish:FISH, spins:SPINS }; slotTable.push(st); }
+  let st = slotTable.find(x => x.id === me.id); if (!st) { st = { id:me.id, name:me.name, fish:FISH, spins:SPINS, hands:BJ_HANDS }; slotTable.push(st); }
   const roll = () => { let x = Math.random() * 18; for (let i = 0; i < SLOT.length; i++) if ((x -= SLOT[i][0]) < 0) return i; return 0; };
   const reels = [roll(), roll(), roll()], [a, b, c] = reels, mult = a === b && b === c ? SLOT[a][1] : a === b || b === c || a === c ? PAIR : 0, win = Math.floor(bet * mult);
-  st = Object.assign({}, st, { fish: st.fish + win - bet, spins: st.spins - 1 });
+  st = Object.assign({ hands:BJ_HANDS }, st, { fish: st.fish + win - bet, spins: st.spins - 1 });
   const table = slotTable.map(x => x.id === me.id ? st : x);
   return { id:me.id, reels, bet, win, mult, table, winner: st.spins <= 0 || st.fish <= 0 ? { id:me.id, name:me.name, fish:st.fish } : null };
 }
 /* Что видят все: надпись с уловом над котом, джекпот, объявление победителя. */
 function slotSeen(m) {
-  const c = catById.get(m.id), d = m.win - m.bet;
-  if (c) floater(textTex((d >= 0 ? '+' : '−') + fmt(Math.abs(d)) + ' 🐟', d > 0 ? '#7cff8a' : d < 0 ? '#ff9a9a' : '#ffffff'), c.position.x, (3.0 + c.userData.hips.position.y) * c.scale.x + 1.1, c.position.z + .2,
-    { size:.6, w:1.8, life:1.7, vy:.6, fade:true, ownMap:true });
+  const c = fishFloat(m.id, m.win - m.bet);
   if (m.mult >= 25) { banner('🎰 ДЖЕКПОТ!', 1600); partyUntil = performance.now() + 2500; fanfare(); for (let i = 0; i < 8; i++) setTimeout(() => launch(i % 2 ? 1 : -1), i * 140); if (c) c.userData.hop = .6; }
-  if (m.winner) setTimeout(() => {
-    showResult('Победитель слотов 🎰', `${(m.winner.name || '').trim() || 'Кот'} — ${fmt(m.winner.fish)} 🐟`, '#ffd60a');
-    partyUntil = performance.now() + 2500; fanfare(); for (let i = 0; i < 6; i++) setTimeout(() => launch(i % 2 ? 1 : -1), i * 160);
-  }, 500);
+  if (m.winner) fishWinner('Победитель слотов 🎰', m.winner);
 }
 function slotResult(m) {
   if (m.id === me.id && slotAnim) { slotAnim.res = m; return; }   // свой результат показываем, когда остановятся барабаны
@@ -1088,7 +1128,7 @@ function slotResult(m) {
 }
 function updateSlots(now) {
   const a = slotAnim; if (!a) return;
-  if (!a.res && now - a.t0 > 4000) { slotAnim = null; slotMsg.className = ''; slotMsg.textContent = 'Нет ответа — попробуйте ещё раз'; return renderSlots(); }
+  if (!a.res && now - a.t0 > 4000) { slotAnim = null; slotMsg.className = 'gmsg'; slotMsg.textContent = 'Нет ответа — попробуйте ещё раз'; return renderSlots(); }
   const flick = Math.floor(now / 70);
   reelEls.forEach((el, i) => {
     if (i < a.stopped) return;
@@ -1098,7 +1138,7 @@ function updateSlots(now) {
   a.flick = flick;
   if (a.stopped === 3) {
     const m = a.res; slotAnim = null; slotTable = m.table;
-    slotMsg.className = m.win > m.bet ? 'win' : m.win ? '' : 'lose';
+    slotMsg.className = 'gmsg ' + (m.win > m.bet ? 'win' : m.win ? '' : 'lose');
     slotMsg.textContent = !m.mult ? `Мимо. −${fmt(m.bet)} 🐟` : `${m.mult >= 5 ? 'Три в ряд ×' + m.mult : 'Пара ×1,4'}! +${fmt(m.win)} 🐟`;
     if (m.mult >= 5 && m.mult < 25) fanfare(); else if (m.mult) beep(880, .12, .06, 'triangle'); else sweep(300, 140, .25, .05);
     slotSeen(m); renderSlots();
@@ -1106,11 +1146,11 @@ function updateSlots(now) {
 }
 $('slotGo').onclick = () => {
   const my = mySlot(), bet = curBet(); if (slotAnim || my.spins <= 0 || bet < 1 || bet > my.fish) return;
-  audio(); slotAnim = { t0: performance.now(), res: null, stopped: 0, flick: 0 }; slotMsg.className = ''; slotMsg.textContent = 'Крутим…'; renderSlots();
+  audio(); slotAnim = { t0: performance.now(), res: null, stopped: 0, flick: 0 }; slotMsg.className = 'gmsg'; slotMsg.textContent = 'Крутим…'; renderSlots();
   if (online) post('slot', { bet }); else slotAnim.res = localSlot(bet);
 };
 slotEl.querySelectorAll('[data-bet]').forEach(b => b.onclick = () => { slotBet = b.dataset.bet; renderSlots(); });
-$('slotBtn').onclick = () => { slotEl.hidden = !slotEl.hidden; renderSlots(); };
+$('slotBtn').onclick = () => { slotEl.hidden = !slotEl.hidden; bjEl.hidden = true; renderSlots(); };
 $('slotClose').onclick = () => { slotEl.hidden = true; };
 $('slotPay').onclick = () => { $('slotPayTable').hidden = !$('slotPayTable').hidden; };
 let slotNewT;
@@ -1118,9 +1158,69 @@ $('slotNew').onclick = () => {   // сбрасывает рыбки у всех,
   const b = $('slotNew');
   if (!slotNewT) { b.textContent = 'Точно? У всех снова будет 1000 рыбок — нажмите ещё раз'; slotNewT = setTimeout(() => { slotNewT = 0; b.textContent = '↺ Новая игра для всех'; }, 3500); return; }
   clearTimeout(slotNewT); slotNewT = 0; b.textContent = '↺ Новая игра для всех';
-  if (online) post('slotreset'); else { slotTable = []; slotMsg.className = ''; slotMsg.textContent = 'Новая игра!'; renderSlots(); }
+  if (online) post('slotreset'); else { bjHand = null; slotTable = []; slotMsg.className = 'gmsg'; slotMsg.textContent = 'Новая игра!'; renderSlots(); }
 };
 renderSlots();
+
+/* ---------- блекджек на тех же рыбках ---------- */
+/* Каждый играет свою раздачу против дилера; карты сдаёт сервер, поэтому только онлайн. Карта — число 0…51, достоинство c % 13 (0 — туз). */
+const bjEl = $('bj'), bjMsg = $('bjMsg'), RANK = ['Т', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'В', 'Д', 'К'], SUIT = ['♠', '♥', '♦', '♣'];
+let bjHand = null, bjBet = '50', bjBusy = false, bjBusyT, bjShown = [0, 0];
+const cardVal = c => { const k = c % 13; return k === 0 ? 11 : k >= 9 ? 10 : k + 1; };
+const handTotal = cs => { let t = 0, a = 0; for (const c of cs) { t += cardVal(c); if (c % 13 === 0) a++; } while (t > 21 && a) { t -= 10; a--; } return t; };
+function drawHand(el, cards, hidden, shown) {
+  el.textContent = '';
+  cards.forEach((c, i) => {
+    const d = document.createElement('div'), suit = Math.floor(c / 13);
+    d.className = 'card' + (suit === 1 || suit === 2 ? ' red' : '') + (i >= shown ? ' new' : '');
+    d.append(RANK[c % 13], document.createElement('br'), SUIT[suit]); el.append(d);
+  });
+  if (hidden) el.append(Object.assign(document.createElement('div'), { className:'card back' + (cards.length >= shown ? ' new' : ''), textContent:'🐾' }));
+}
+function renderBj() {
+  const my = mySlot(), h = bjHand, play = !!h && h.state === 'play', bet = bjBet === 'all' ? my.fish : +bjBet;
+  $('bjFish').textContent = `🐟 ${fmt(my.fish)}`; $('bjLeft').textContent = `Осталось раздач: ${my.hands}`;
+  drawHand($('bjD'), h ? h.dealer : [], play, bjShown[0]); drawHand($('bjP'), h ? h.player : [], false, bjShown[1]);
+  bjShown = h ? [h.dealer.length + (play ? 1 : 0), h.player.length] : [0, 0];
+  $('bjDT').textContent = !h ? '' : play ? cardVal(h.dealer[0]) + ' + ?' : handTotal(h.dealer); $('bjPT').textContent = h ? handTotal(h.player) : '';
+  const res = h && { bj:['win', `Блекджек! +${fmt(h.delta)} 🐟`], win:['win', `Победа! +${fmt(h.delta)} 🐟`], push:['', 'Ничья — ставка вернулась'],
+    bust:['lose', `Перебор. −${fmt(-h.delta)} 🐟`], lose:['lose', `Дилер сильнее. −${fmt(-h.delta)} 🐟`] }[h.state];
+  bjMsg.className = 'gmsg ' + (res ? res[0] : '');
+  bjMsg.textContent = !online ? 'Блекджек работает только при связи с сервером' : play ? `Ставка ${fmt(h.bet)} 🐟 — ещё карту?` : res ? res[1] : 'Выберите ставку и сдавайте';
+  $('bjBets').hidden = $('bjDeal').hidden = play; $('bjActs').hidden = !play;
+  bjEl.querySelectorAll('[data-bjbet]').forEach(b => { const v = b.dataset.bjbet === 'all' ? my.fish : +b.dataset.bjbet; b.classList.toggle('on', b.dataset.bjbet === bjBet); b.disabled = v < 1 || v > my.fish; });
+  $('bjDeal').disabled = bjBusy || !online || my.hands <= 0 || bet < 1 || bet > my.fish;
+  $('bjDeal').textContent = my.hands <= 0 ? 'Раздачи кончились' : my.fish <= 0 ? 'Рыбки кончились' : bet > my.fish ? 'Ставка больше улова' : `СДАТЬ · ${fmt(bet)} 🐟`;
+  $('bjHit').disabled = $('bjStand').disabled = bjBusy; $('bjDouble').disabled = bjBusy || !(h && h.canDouble);
+  renderTop($('bjTop'));
+}
+function bjSend(a, extra) {
+  if (bjBusy || !online) return;
+  audio(); bjBusy = true; clearTimeout(bjBusyT); bjBusyT = setTimeout(() => { bjBusy = false; renderBj(); }, 4000);   // нет ответа — отпускаем кнопки
+  post('bj', Object.assign({ a }, extra)); renderBj();
+}
+function bjUpdate(m) {   // сервер прислал мою раздачу
+  bjBusy = false; clearTimeout(bjBusyT);
+  const was = bjHand && bjHand.state; bjHand = m.hand;
+  if (m.fish != null) { const st = slotTable.find(x => x.id === me.id); if (st) st.fish = m.fish; else slotTable.push({ id:me.id, name:me.name, fish:m.fish, spins:SPINS, hands:BJ_HANDS }); }
+  renderBj(); renderSlots();
+  if (m.no || !m.hand) return;
+  beep(520, .05, .06, 'square'); if (tg) { try { tg.HapticFeedback.impactOccurred('light'); } catch (e) {} }
+  if (m.hand.state !== 'play' && was !== m.hand.state) { if (m.hand.delta > 0) fanfare(); else if (m.hand.delta < 0) sweep(300, 140, .25, .05); else beep(660, .12, .05, 'triangle'); }
+}
+function bjSeen(m) {   // чья-то раздача закончилась — это видят все
+  slotTable = m.table; renderSlots(); renderBj();
+  const c = fishFloat(m.id, m.delta);
+  if (m.state === 'bj') { banner('🃏 БЛЕКДЖЕК!', 1500); partyUntil = performance.now() + 2000; for (let i = 0; i < 4; i++) setTimeout(() => launch(i % 2 ? 1 : -1), i * 150); if (c) c.userData.hop = .6; }
+  if (m.winner) fishWinner('Победитель блекджека 🃏', m.winner);
+}
+$('bjDeal').onclick = () => { const my = mySlot(); bjSend('deal', { bet: bjBet === 'all' ? my.fish : +bjBet }); };
+$('bjHit').onclick = () => bjSend('hit'); $('bjStand').onclick = () => bjSend('stand'); $('bjDouble').onclick = () => bjSend('double');
+bjEl.querySelectorAll('[data-bjbet]').forEach(b => b.onclick = () => { bjBet = b.dataset.bjbet; renderBj(); });
+$('bjBtn').onclick = () => { bjEl.hidden = !bjEl.hidden; slotEl.hidden = true; renderBj(); };
+$('bjClose').onclick = () => { bjEl.hidden = true; };
+$('bjRules').onclick = () => { $('bjRulesText').hidden = !$('bjRulesText').hidden; };
+renderBj();
 
 /* ---------- цикл ---------- */
 let prev = performance.now();

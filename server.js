@@ -69,23 +69,68 @@ const REACTS = ['tomato', 'heart', 'jump', 'meow'];
 // SLOT — [вес символа, множитель за три одинаковых]; любая пара даёт ×PAIR. Порядок символов тот же, что на странице.
 const SLOT = [[5, 5], [4, 8], [3, 12], [3, 12], [2, 25], [1, 100]], SLOT_W = 18, PAIR = 1.4, FISH = 1000, SPINS = 20;
 const rollSym = () => { let x = Math.random() * SLOT_W; for (let i = 0; i < SLOT.length; i++) if ((x -= SLOT[i][0]) < 0) return i; return 0; };
-const slotTable = r => [...r.slots].map(([id, x]) => ({ id, name: x.name, fish: x.fish, spins: x.spins }));
+const HANDS = 10;   // раздач блекджека на игру; рыбки у слотов и блекджека общие
+const slotTable = r => [...r.slots].map(([id, x]) => ({ id, name: x.name, fish: x.fish, spins: x.spins, hands: x.hands }));
+function wallet(r, pid, p) {
+  let st = r.slots.get(pid);
+  if (!st) { if (r.slots.size >= 200) return null; st = { fish: FISH, spins: SPINS, hands: HANDS, t: 0 }; r.slots.set(pid, st); }
+  st.name = p.cat.name; return st;
+}
+const topFish = live => { const [id, x] = live.reduce((m, y) => y[1].fish > m[1].fish ? y : m); return { id, name: x.name, fish: x.fish }; };
 function slotSpin(r, pid, p, bet) {
   const now = Date.now(); bet = Math.floor(+bet);
-  let st = r.slots.get(pid);
-  if (!st) { if (r.slots.size >= 200) return false; st = { fish: FISH, spins: SPINS, t: 0 }; r.slots.set(pid, st); }
-  st.name = p.cat.name;
+  const st = wallet(r, pid, p); if (!st) return false;
   if (!(bet >= 1) || bet > st.fish || st.spins <= 0 || now - st.t < 1200) return false;
   st.t = now;
   const reels = [rollSym(), rollSym(), rollSym()], [a, b, c] = reels;
   const mult = a === b && b === c ? SLOT[a][1] : a === b || b === c || a === c ? PAIR : 0, win = Math.floor(bet * mult);
   st.fish += win - bet; st.spins--;
   // игра окончена, когда у всех, кто играл и ещё в комнате, кончились вращения или рыбки
-  const live = [...r.slots].filter(([id]) => r.players.has(id));
-  let winner = null;
-  if (live.every(([, x]) => x.spins <= 0 || x.fish <= 0)) { const [id, x] = live.reduce((m, y) => y[1].fish > m[1].fish ? y : m); winner = { id, name: x.name, fish: x.fish }; }
+  const live = [...r.slots].filter(([id, x]) => r.players.has(id) && x.spins < SPINS);
+  const winner = live.every(([, x]) => x.spins <= 0 || x.fish <= 0) ? topFish(live) : null;
   broadcast(r, 'slot', { id: pid, reels, bet, win, mult, table: slotTable(r), winner });
   return true;
+}
+// Блекджек: каждый играет свою раздачу против дилера-сервера. Карта — число 0…51: достоинство c % 13 (0 — туз, 10–12 — валет, дама, король).
+// Дилер берёт до 17, блекджек с раздачи платит 3:2, можно удвоить на первых двух картах; сплита и страховки нет.
+const cardVal = c => { const k = c % 13; return k === 0 ? 11 : k >= 9 ? 10 : k + 1; };
+const total = cs => { let t = 0, a = 0; for (const c of cs) { t += cardVal(c); if (c % 13 === 0) a++; } while (t > 21 && a) { t -= 10; a--; } return t; };
+const bjView = (h, st) => h ? { player: h.player, dealer: h.state === 'play' ? [h.dealer[0]] : h.dealer, bet: h.bet, state: h.state, delta: h.delta || 0,
+  canDouble: h.state === 'play' && h.player.length === 2 && st.fish >= h.bet } : null;
+function bjEnd(r, pid, p, st) {
+  const h = st.bj, pt = total(h.player), natural = pt === 21 && h.player.length === 2;
+  if (pt <= 21 && !natural) while (total(h.dealer) < 17) h.dealer.push(h.deck.pop());
+  const dt = total(h.dealer), dn = dt === 21 && h.dealer.length === 2;
+  let pay = 0, state = 'lose';
+  if (pt > 21) state = 'bust';
+  else if (natural && !dn) { pay = Math.floor(h.bet * 2.5); state = 'bj'; }
+  else if (dn && !natural) state = 'lose';
+  else if (dt > 21 || pt > dt) { pay = h.bet * 2; state = 'win'; }
+  else if (pt === dt) { pay = h.bet; state = 'push'; }
+  st.fish += pay; st.hands--; h.state = state; h.delta = pay - h.bet; delete h.deck;
+  const live = [...r.slots].filter(([id, x]) => r.players.has(id) && x.hands < HANDS);
+  const winner = live.every(([, x]) => x.hands <= 0 || x.fish <= 0) ? topFish(live) : null;
+  send(p.res, 'bj', { hand: bjView(h, st), fish: st.fish });
+  broadcast(r, 'bjend', { id: pid, delta: h.delta, state, table: slotTable(r), winner });
+}
+function bjAct(r, pid, p, m) {
+  const st = wallet(r, pid, p); if (!st) return;
+  let h = st.bj;
+  const no = () => send(p.res, 'bj', { hand: bjView(h, st), fish: st.fish, no: true });
+  if (m.a === 'deal') {
+    const bet = Math.floor(+m.bet);
+    if ((h && h.state === 'play') || !(bet >= 1) || bet > st.fish || st.hands <= 0) return no();
+    const deck = [...Array(52).keys()];
+    for (let i = 51; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+    st.fish -= bet;   // ставка списывается сразу, выигрыш возвращается в конце раздачи
+    h = st.bj = { bet, deck, player: [deck.pop(), deck.pop()], dealer: [deck.pop(), deck.pop()], state: 'play' };
+    if (total(h.player) === 21 || total(h.dealer) === 21) return bjEnd(r, pid, p, st);
+  } else if (!h || h.state !== 'play') return no();
+  else if (m.a === 'hit') { h.player.push(h.deck.pop()); if (total(h.player) >= 21) return bjEnd(r, pid, p, st); }
+  else if (m.a === 'double' && h.player.length === 2 && st.fish >= h.bet) { st.fish -= h.bet; h.bet *= 2; h.player.push(h.deck.pop()); return bjEnd(r, pid, p, st); }
+  else if (m.a === 'stand') return bjEnd(r, pid, p, st);
+  else return no();
+  send(p.res, 'bj', { hand: bjView(h, st), fish: st.fish });
 }
 function startGame(r, kind) {
   const ids = [...r.players.keys()]; if (!ids.length) return;
@@ -133,6 +178,7 @@ function act(r, pid, m) {
     const now = Date.now(); if (now - (p.rt || 0) < 200) return; p.rt = now;
     broadcast(r, 'react', { id: pid, kind: m.kind });
   } else if (m.type === 'slot') { if (!slotSpin(r, pid, p, m.bet)) send(p.res, 'slotno', {}); }
+  else if (m.type === 'bj') bjAct(r, pid, p, m);
   else if (m.type === 'slotreset') { r.slots.clear(); broadcast(r, 'slots', { table: [] }); }
   else if (m.type === 'hype') {
     p.hype = Math.min(1, Math.max(0, +m.v || 0)); broadcast(r, 'hype', { id: pid, v: p.hype });
@@ -154,7 +200,7 @@ http.createServer((req, res) => {
     send(res, 'init', { items: r.items, remove: r.remove, rot: r.rot, fresh: r.fresh, players: playerList(r),
       spin: r.spin && { from: r.spin.from, to: r.spin.to, dur: r.spin.dur, elapsed: Date.now() - r.spin.start },
       game: r.game && { kind: r.game.kind, data: r.game.data, elapsed: Date.now() - r.game.start },
-      kar: r.kar || null, slots: slotTable(r),
+      kar: r.kar || null, slots: slotTable(r), bj: r.slots.has(pid) ? bjView(r.slots.get(pid).bj, r.slots.get(pid)) : null,
       hype: Object.fromEntries([...r.players].filter(([, q]) => q.hype).map(([id, q]) => [id, q.hype])) });
     r.fresh = false;
     for (const [id, p] of r.players) if (id !== pid) send(p.res, 'players', { players: playerList(r) });
