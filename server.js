@@ -38,7 +38,7 @@ const cleanSongs = a => Array.isArray(a) && a.length >= MIN && a.length <= MAX
 function getRoom(id) {
   let r = rooms.get(id);
   if (!r) {
-    r = { id, fresh: true, remove: false, rot: 0, spin: null, game: null, pending: -1, timer: null, gc: null, players: new Map(),
+    r = { id, fresh: true, remove: false, rot: 0, spin: null, game: null, slots: new Map(), pending: -1, timer: null, gc: null, players: new Map(),
       items: ['Пицца', 'Суши', 'Бургер', 'Паста', 'Шаурма', 'Рамен', 'Плов', 'Салат'].map((text, i) => ({ text, color: PALETTE[i] })) };
     if (/^karaoke/.test(id)) { r.kar = KAR_SONGS.map(title => ({ title, yt: '', text: '' })); r.items = karItems(r.kar); r.remove = true; r.fresh = false; }
     rooms.set(id, r);
@@ -65,6 +65,28 @@ function applyRemove(r) {
 }
 // Мини-игры: исход выбирает сервер, чтобы у всех зрителей он был одинаковый. Длительности совпадают с клиентскими.
 const REACTS = ['tomato', 'heart', 'jump', 'meow'];
+// Кото-слоты на игровых «рыбках» (никаких денег): у каждого 1000 рыбок и 20 вращений, побеждает тот, у кого рыбок больше.
+// SLOT — [вес символа, множитель за три одинаковых]; любая пара даёт ×PAIR. Порядок символов тот же, что на странице.
+const SLOT = [[5, 5], [4, 8], [3, 12], [3, 12], [2, 25], [1, 100]], SLOT_W = 18, PAIR = 1.4, FISH = 1000, SPINS = 20;
+const rollSym = () => { let x = Math.random() * SLOT_W; for (let i = 0; i < SLOT.length; i++) if ((x -= SLOT[i][0]) < 0) return i; return 0; };
+const slotTable = r => [...r.slots].map(([id, x]) => ({ id, name: x.name, fish: x.fish, spins: x.spins }));
+function slotSpin(r, pid, p, bet) {
+  const now = Date.now(); bet = Math.floor(+bet);
+  let st = r.slots.get(pid);
+  if (!st) { if (r.slots.size >= 200) return false; st = { fish: FISH, spins: SPINS, t: 0 }; r.slots.set(pid, st); }
+  st.name = p.cat.name;
+  if (!(bet >= 1) || bet > st.fish || st.spins <= 0 || now - st.t < 1200) return false;
+  st.t = now;
+  const reels = [rollSym(), rollSym(), rollSym()], [a, b, c] = reels;
+  const mult = a === b && b === c ? SLOT[a][1] : a === b || b === c || a === c ? PAIR : 0, win = Math.floor(bet * mult);
+  st.fish += win - bet; st.spins--;
+  // игра окончена, когда у всех, кто играл и ещё в комнате, кончились вращения или рыбки
+  const live = [...r.slots].filter(([id]) => r.players.has(id));
+  let winner = null;
+  if (live.every(([, x]) => x.spins <= 0 || x.fish <= 0)) { const [id, x] = live.reduce((m, y) => y[1].fish > m[1].fish ? y : m); winner = { id, name: x.name, fish: x.fish }; }
+  broadcast(r, 'slot', { id: pid, reels, bet, win, mult, table: slotTable(r), winner });
+  return true;
+}
 function startGame(r, kind) {
   const ids = [...r.players.keys()]; if (!ids.length) return;
   let data, dur;
@@ -110,7 +132,9 @@ function act(r, pid, m) {
   else if (m.type === 'react' && REACTS.includes(m.kind)) {
     const now = Date.now(); if (now - (p.rt || 0) < 200) return; p.rt = now;
     broadcast(r, 'react', { id: pid, kind: m.kind });
-  } else if (m.type === 'hype') {
+  } else if (m.type === 'slot') { if (!slotSpin(r, pid, p, m.bet)) send(p.res, 'slotno', {}); }
+  else if (m.type === 'slotreset') { r.slots.clear(); broadcast(r, 'slots', { table: [] }); }
+  else if (m.type === 'hype') {
     p.hype = Math.min(1, Math.max(0, +m.v || 0)); broadcast(r, 'hype', { id: pid, v: p.hype });
   }
 }
@@ -130,7 +154,7 @@ http.createServer((req, res) => {
     send(res, 'init', { items: r.items, remove: r.remove, rot: r.rot, fresh: r.fresh, players: playerList(r),
       spin: r.spin && { from: r.spin.from, to: r.spin.to, dur: r.spin.dur, elapsed: Date.now() - r.spin.start },
       game: r.game && { kind: r.game.kind, data: r.game.data, elapsed: Date.now() - r.game.start },
-      kar: r.kar || null,
+      kar: r.kar || null, slots: slotTable(r),
       hype: Object.fromEntries([...r.players].filter(([, q]) => q.hype).map(([id, q]) => [id, q.hype])) });
     r.fresh = false;
     for (const [id, p] of r.players) if (id !== pid) send(p.res, 'players', { players: playerList(r) });

@@ -73,6 +73,28 @@
   .ksong { display:flex; flex-direction:column; gap:6px; padding:10px; border:1px solid var(--line); border-radius:10px; flex:none; }
   .ksong .row input { flex:1; }
   .dash { padding:10px; border-radius:10px; border:1px dashed var(--line); background:none; color:var(--text); cursor:pointer; font:inherit; flex:none; }
+  #slots { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(140px + env(safe-area-inset-bottom, 0px)); width:min(400px, calc(100% - 20px)); max-height:calc(100% - 200px); overflow-y:auto; z-index:4;
+    display:flex; flex-direction:column; gap:10px; padding:12px 14px 14px; background:rgba(18,10,36,.95); border:2px solid var(--accent2); border-radius:18px; box-shadow:0 0 40px rgba(255,214,10,.3); }
+  #slots header { display:flex; align-items:center; gap:10px; }
+  #slots header b { flex:1; font-size:17px; }
+  #slotFish { font-weight:800; color:var(--accent2); white-space:nowrap; }
+  .reels { display:flex; gap:8px; justify-content:center; }
+  .reel { flex:1; max-width:104px; aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:52px; line-height:1; background:linear-gradient(180deg,#0b0618,#2a1a52 50%,#0b0618); border:2px solid var(--line); border-radius:14px; }
+  #slotMsg { text-align:center; font-weight:700; min-height:21px; }
+  #slotMsg.win { color:#7cff8a; } #slotMsg.lose { color:#ff9a9a; }
+  .bets { display:flex; gap:6px; }
+  .bets button { flex:1; padding:8px 0; border-radius:10px; border:1px solid var(--line); background:#261a48; color:var(--text); font:inherit; font-weight:700; cursor:pointer; }
+  .bets button.on { background:var(--accent); border-color:var(--accent); }
+  .bets button:disabled { opacity:.35; cursor:default; }
+  #slotGo { padding:13px; border:0; border-radius:999px; font:inherit; font-size:18px; font-weight:800; letter-spacing:.04em; color:#2a0a18; background:linear-gradient(180deg,#ffe45c,#ffb300); box-shadow:0 4px 0 #b36b00; cursor:pointer; }
+  #slotGo:disabled { opacity:.5; cursor:default; }
+  .sinfo { display:flex; justify-content:space-between; color:var(--muted); font-size:13px; }
+  .sinfo a { color:var(--accent2); cursor:pointer; }
+  #slotPayTable { color:var(--muted); font-size:13px; line-height:1.7; }
+  .srow { display:flex; justify-content:space-between; gap:10px; padding:5px 8px; border-radius:8px; }
+  .srow span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .srow b { white-space:nowrap; font-weight:700; }
+  .srow.me { background:#261a48; color:var(--accent2); }
   #sing { display:block; margin:10px auto 0; padding:10px 22px; border:0; border-radius:999px; background:var(--accent); color:#fff; font:inherit; font-weight:800; font-size:18px; cursor:pointer; }
   #again { position:absolute; top:106px; left:14px; max-width:60%; padding:9px 14px; border-radius:10px; border:1px solid var(--accent2); background:rgba(28,18,54,.85); color:var(--text); cursor:pointer; font:inherit; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #kar { position:absolute; top:56px; bottom:calc(140px + env(safe-area-inset-bottom, 0px)); left:50%; transform:translateX(-50%); width:min(720px, calc(100% - 20px)); z-index:4; display:flex; flex-direction:column;
@@ -88,7 +110,9 @@
   @media (max-width:760px) {
     #karText { font-size:21px; }
     #panel { position:absolute; inset:auto 0 0 0; width:auto; height:62%; border-left:0; border-top:1px solid var(--line); border-radius:16px 16px 0 0; z-index:5; }
-    #spin { font-size:18px; padding:14px 30px; }
+    #spin { font-size:18px; padding:14px 22px; }
+    .gbtn { width:50px; height:50px; }
+    .reel { font-size:44px; }
     #banner { font-size:48px; }
     #panel.kb { border-radius:0; }
     #panel.kb .check, #panel.kb #add { display:none; }
@@ -115,6 +139,17 @@
     <div id="who" title="Сколько зрителей в комнате">🐱 1</div>
     <button id="invite" type="button">🔗 Позвать</button>
     <button id="toggle">⚙ Настроить</button>
+    <div id="slots" hidden>
+      <header><b>🎰 Кото-слоты</b><span id="slotFish"></span><button class="sm" id="slotClose" type="button" aria-label="Закрыть" title="Закрыть">✕</button></header>
+      <div class="reels"><div class="reel">🐟</div><div class="reel">🐟</div><div class="reel">🐟</div></div>
+      <div id="slotMsg">Три одинаковых — большой улов, пара — ×1,4</div>
+      <div class="bets"><button type="button" data-bet="10">10</button><button type="button" data-bet="50">50</button><button type="button" data-bet="100">100</button><button type="button" data-bet="250">250</button><button type="button" data-bet="all">Всё</button></div>
+      <button id="slotGo" type="button"></button>
+      <div class="sinfo"><span id="slotLeft"></span><a id="slotPay">Выплаты</a></div>
+      <div id="slotPayTable" hidden>🐟🐟🐟 ×5 · 🐭🐭🐭 ×8 · 🧶🧶🧶 ×12 · 🥛🥛🥛 ×12<br>👑👑👑 ×25 · 7️⃣7️⃣7️⃣ ×100 · любая пара ×1,4<br>У каждого 1000 рыбок и 20 вращений. Побеждает тот, у кого в конце больше рыбок.</div>
+      <div id="slotTop"></div>
+      <button class="dash" id="slotNew" type="button">↺ Новая игра для всех</button>
+    </div>
     <div id="banner" hidden></div>
     <div id="bar">
       <div>
@@ -128,6 +163,7 @@
         <button class="rbtn gbtn" type="button" id="race" title="Кошачьи бега">🏁</button>
         <button id="spin">КРУТИТЬ!</button>
         <button class="rbtn gbtn" type="button" id="bottle" title="Бутылочка">🍾</button>
+        <button class="rbtn gbtn" type="button" id="slotBtn" title="Кото-слоты на рыбки">🎰</button>
       </div>
     </div>
   </div>
@@ -633,10 +669,14 @@ function connect() {
       else { state.items = m.items; state.remove = m.remove; refresh(); }
       setPlayers(m.players); post('cat', { cat: catOf() });
       if (m.spin) beginSpin(m.spin.from, m.spin.to, m.spin.dur, m.spin.elapsed); else if (!spin) disc.rotation.z = m.rot;
+      slotTable = m.slots || []; renderSlots();
       hypeOf.clear(); for (const id in m.hype || {}) hypeOf.set(id, m.hype[id]);
       if (m.game) beginGame(m.game.kind, m.game.data, m.game.elapsed); else if (game) endGame();
     } else if (m.type === 'players') setPlayers(m.players);
     else if (m.type === 'kar') { if (m.by !== me.id) { karSongs = m.songs; renderKar(); } }
+    else if (m.type === 'slot') slotResult(m);
+    else if (m.type === 'slots') { slotTable = m.table; slotAnim = null; $('slotMsg').className = ''; $('slotMsg').textContent = 'Новая игра! У всех снова 1000 рыбок'; renderSlots(); }
+    else if (m.type === 'slotno') { slotAnim = null; $('slotMsg').className = ''; $('slotMsg').textContent = 'Не получилось — попробуйте ещё раз'; renderSlots(); }
     else if (m.type === 'react') playReact(m.id, m.kind);
     else if (m.type === 'hype') { if (m.id !== me.id) hypeOf.set(m.id, m.v); }
     else if (m.type === 'game') beginGame(m.kind, m.data, 0);
@@ -785,7 +825,7 @@ function updateFx(dt) {
     f.sp.position.x += (f.vx + Math.sin(f.life * 7) * f.wob) * dt; f.sp.position.y += f.vy * dt; f.sp.position.z += f.vz * dt;
     f.sp.material.rotation += f.rot * dt;
     if (f.fade) f.sp.material.opacity = Math.min(1, f.life / f.max * 2.5);
-    if (f.life <= 0) { scene.remove(f.sp); f.sp.material.dispose(); fx.splice(i, 1); if (f.end) f.end(); }
+    if (f.life <= 0) { scene.remove(f.sp); if (f.ownMap) f.sp.material.map.dispose(); f.sp.material.dispose(); fx.splice(i, 1); if (f.end) f.end(); }
   }
   for (let i = decals.length - 1; i >= 0; i--) {
     const d = decals[i]; d.life -= dt; d.m.material.opacity = Math.min(.9, d.life / 2);
@@ -994,6 +1034,94 @@ if (karMode) {
   if (karEdit) { $('tabKar').hidden = false; renderKar(); showTab('kar'); panel.classList.remove('closed'); }
 }
 
+/* ---------- кото-слоты: однорукий бандит на игровых рыбках ---------- */
+/* Денег тут нет: у каждого 1000 рыбок и 20 вращений, побеждает тот, у кого рыбок больше. Онлайн барабаны «крутит» сервер. */
+const SYM = ['🐟', '🐭', '🧶', '🥛', '👑', '7️⃣'], SLOT = [[5, 5], [4, 8], [3, 12], [3, 12], [2, 25], [1, 100]], PAIR = 1.4, FISH = 1000, SPINS = 20;
+const slotEl = $('slots'), reelEls = [...slotEl.querySelectorAll('.reel')], slotMsg = $('slotMsg');
+let slotTable = [], slotBet = '50', slotAnim = null;
+const fmt = n => String(n).replace(/\B(?=(\d{3})+$)/g, ' ');
+const mySlot = () => slotTable.find(x => x.id === me.id) || { id:me.id, name:me.name, fish:FISH, spins:SPINS };
+const curBet = () => slotBet === 'all' ? mySlot().fish : +slotBet;
+function textTex(text, color) {
+  const c = document.createElement('canvas'); c.width = 384; c.height = 128; const g = c.getContext('2d');
+  g.font = '800 72px system-ui,-apple-system,"Segoe UI",Roboto,"Apple Color Emoji","Segoe UI Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = 12; g.lineJoin = 'round'; g.strokeStyle = 'rgba(0,0,0,.8)'; g.strokeText(text, 192, 66); g.fillStyle = color; g.fillText(text, 192, 66);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
+}
+function renderSlots() {
+  const my = mySlot(), bet = curBet();
+  $('slotFish').textContent = `🐟 ${fmt(my.fish)}`; $('slotLeft').textContent = `Осталось вращений: ${my.spins}`;
+  slotEl.querySelectorAll('[data-bet]').forEach(b => { const v = b.dataset.bet === 'all' ? my.fish : +b.dataset.bet; b.classList.toggle('on', b.dataset.bet === slotBet); b.disabled = v < 1 || v > my.fish; });
+  $('slotGo').disabled = !!slotAnim || my.spins <= 0 || bet < 1 || bet > my.fish;
+  $('slotGo').textContent = my.spins <= 0 ? 'Вращения кончились' : my.fish <= 0 ? 'Рыбки кончились' : bet > my.fish ? 'Ставка больше улова' : `КРУТИТЬ · ${fmt(bet)} 🐟`;
+  const rows = slotTable.slice(); if (!rows.some(x => x.id === me.id)) rows.push(my);
+  rows.sort((a, b) => b.fish - a.fish);
+  const top = $('slotTop'); top.textContent = '';
+  rows.slice(0, 10).forEach((x, i) => {
+    const d = document.createElement('div'), n = document.createElement('span'), b = document.createElement('b');
+    d.className = 'srow' + (x.id === me.id ? ' me' : ''); n.textContent = `${i + 1}. ${(x.name || '').trim() || 'Кот'}`; b.textContent = `${fmt(x.fish)} 🐟 · ещё ${x.spins}`;
+    d.append(n, b); top.append(d);
+  });
+}
+function localSlot(bet) {   // офлайн: то же, что делает сервер, но только для меня
+  let st = slotTable.find(x => x.id === me.id); if (!st) { st = { id:me.id, name:me.name, fish:FISH, spins:SPINS }; slotTable.push(st); }
+  const roll = () => { let x = Math.random() * 18; for (let i = 0; i < SLOT.length; i++) if ((x -= SLOT[i][0]) < 0) return i; return 0; };
+  const reels = [roll(), roll(), roll()], [a, b, c] = reels, mult = a === b && b === c ? SLOT[a][1] : a === b || b === c || a === c ? PAIR : 0, win = Math.floor(bet * mult);
+  st = Object.assign({}, st, { fish: st.fish + win - bet, spins: st.spins - 1 });
+  const table = slotTable.map(x => x.id === me.id ? st : x);
+  return { id:me.id, reels, bet, win, mult, table, winner: st.spins <= 0 || st.fish <= 0 ? { id:me.id, name:me.name, fish:st.fish } : null };
+}
+/* Что видят все: надпись с уловом над котом, джекпот, объявление победителя. */
+function slotSeen(m) {
+  const c = catById.get(m.id), d = m.win - m.bet;
+  if (c) floater(textTex((d >= 0 ? '+' : '−') + fmt(Math.abs(d)) + ' 🐟', d > 0 ? '#7cff8a' : d < 0 ? '#ff9a9a' : '#ffffff'), c.position.x, (3.0 + c.userData.hips.position.y) * c.scale.x + 1.1, c.position.z + .2,
+    { size:.6, w:1.8, life:1.7, vy:.6, fade:true, ownMap:true });
+  if (m.mult >= 25) { banner('🎰 ДЖЕКПОТ!', 1600); partyUntil = performance.now() + 2500; fanfare(); for (let i = 0; i < 8; i++) setTimeout(() => launch(i % 2 ? 1 : -1), i * 140); if (c) c.userData.hop = .6; }
+  if (m.winner) setTimeout(() => {
+    showResult('Победитель слотов 🎰', `${(m.winner.name || '').trim() || 'Кот'} — ${fmt(m.winner.fish)} 🐟`, '#ffd60a');
+    partyUntil = performance.now() + 2500; fanfare(); for (let i = 0; i < 6; i++) setTimeout(() => launch(i % 2 ? 1 : -1), i * 160);
+  }, 500);
+}
+function slotResult(m) {
+  if (m.id === me.id && slotAnim) { slotAnim.res = m; return; }   // свой результат показываем, когда остановятся барабаны
+  slotTable = m.table; renderSlots(); slotSeen(m);
+}
+function updateSlots(now) {
+  const a = slotAnim; if (!a) return;
+  if (!a.res && now - a.t0 > 4000) { slotAnim = null; slotMsg.className = ''; slotMsg.textContent = 'Нет ответа — попробуйте ещё раз'; return renderSlots(); }
+  const flick = Math.floor(now / 70);
+  reelEls.forEach((el, i) => {
+    if (i < a.stopped) return;
+    if (a.res && i === a.stopped && now >= a.t0 + 700 + i * 400) { el.textContent = SYM[a.res.reels[i]]; a.stopped++; beep(420 + i * 90, .07, .07, 'square'); if (tg) { try { tg.HapticFeedback.impactOccurred('light'); } catch (e) {} } }
+    else if (flick !== a.flick) el.textContent = SYM[Math.floor(Math.random() * SYM.length)];
+  });
+  a.flick = flick;
+  if (a.stopped === 3) {
+    const m = a.res; slotAnim = null; slotTable = m.table;
+    slotMsg.className = m.win > m.bet ? 'win' : m.win ? '' : 'lose';
+    slotMsg.textContent = !m.mult ? `Мимо. −${fmt(m.bet)} 🐟` : `${m.mult >= 5 ? 'Три в ряд ×' + m.mult : 'Пара ×1,4'}! +${fmt(m.win)} 🐟`;
+    if (m.mult >= 5 && m.mult < 25) fanfare(); else if (m.mult) beep(880, .12, .06, 'triangle'); else sweep(300, 140, .25, .05);
+    slotSeen(m); renderSlots();
+  }
+}
+$('slotGo').onclick = () => {
+  const my = mySlot(), bet = curBet(); if (slotAnim || my.spins <= 0 || bet < 1 || bet > my.fish) return;
+  audio(); slotAnim = { t0: performance.now(), res: null, stopped: 0, flick: 0 }; slotMsg.className = ''; slotMsg.textContent = 'Крутим…'; renderSlots();
+  if (online) post('slot', { bet }); else slotAnim.res = localSlot(bet);
+};
+slotEl.querySelectorAll('[data-bet]').forEach(b => b.onclick = () => { slotBet = b.dataset.bet; renderSlots(); });
+$('slotBtn').onclick = () => { slotEl.hidden = !slotEl.hidden; renderSlots(); };
+$('slotClose').onclick = () => { slotEl.hidden = true; };
+$('slotPay').onclick = () => { $('slotPayTable').hidden = !$('slotPayTable').hidden; };
+let slotNewT;
+$('slotNew').onclick = () => {   // сбрасывает рыбки у всех, поэтому просим нажать дважды
+  const b = $('slotNew');
+  if (!slotNewT) { b.textContent = 'Точно? У всех снова будет 1000 рыбок — нажмите ещё раз'; slotNewT = setTimeout(() => { slotNewT = 0; b.textContent = '↺ Новая игра для всех'; }, 3500); return; }
+  clearTimeout(slotNewT); slotNewT = 0; b.textContent = '↺ Новая игра для всех';
+  if (online) post('slotreset'); else { slotTable = []; slotMsg.className = ''; slotMsg.textContent = 'Новая игра!'; renderSlots(); }
+};
+renderSlots();
+
 /* ---------- цикл ---------- */
 let prev = performance.now();
 function frame(now) {
@@ -1016,7 +1144,7 @@ function frame(now) {
   if (Math.abs((game ? 1 : 0) - camK) > .002) { camK += ((game ? 1 : 0) - camK) * (1 - Math.exp(-4 * dt)); placeCamera(); }
   updateGame(now); updateDance(dt, now);
   danceCats(t, dt, !!spin, now < partyUntil);
-  updateFireworks(dt); updateFx(dt); updateKaraoke(dt);
+  updateFireworks(dt); updateFx(dt); updateKaraoke(dt); updateSlots(now);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
